@@ -397,57 +397,6 @@ let enter state =
 
 (* -------------------------------------------------------------------------- *)
 
-(* The internal function [make_scheme] turns a variable, [body], into a type
-   scheme. The body of the type scheme is [body]. The quantifiers of the type
-   scheme are exactly the generic structureless variables that are reachable,
-   in the unification graph, from [body]. The function [is_generic] determines
-   which variables are generic. *)
-
-(* The order in which the quantifiers appear is determined in an arbitrary
-   manner. *)
-
-(* JSTOLAREK: unused, remove *)
-let make_scheme (is_generic : U.variable -> bool) (body : U.variable) : scheme =
-
-  (* Prepare to mark which variables have been visited. *)
-  let { quantifiers; body } = scheme body in
-
-  let visited : unit U.VarMap.t = List.fold_left (fun acc v ->
-    U.VarMap.add acc v (); acc) (U.VarMap.create 128) quantifiers in
-
-  let rec traverse v quantifiers =
-
-    (* If this variable is not generic or has been discovered already, then
-       we must stop. *)
-
-    if not (is_generic v) || U.VarMap.mem visited v then
-      quantifiers
-    else begin
-
-      (* Mark this variable as visited. If it carries no structure, then it is
-         a leaf in the generic part of this type scheme, that is, a
-         quantifier: add it to the list of quantifiers. Otherwise, traverse
-         its descendants. Note that the variable must be marked before the
-         recursive call, so as to guarantee termination in the presence of
-         cyclic terms. *)
-
-      U.VarMap.add visited v ();
-      match U.structure v with
-      | None ->
-          v :: quantifiers
-      | Some t ->
-          S.fold traverse t quantifiers
-
-    end
-
-  in
-  (* Discover which quantifiers are accessible from [body]. *)
-  let quantifiers = traverse body quantifiers in
-  (* Build a type scheme. *)
-  { quantifiers; body }
-
-(* -------------------------------------------------------------------------- *)
-
 (* [exit] is where the moderately subtle generalization work takes place. *)
 
 let exit rectypes state roots =
