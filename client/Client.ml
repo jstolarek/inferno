@@ -406,13 +406,28 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
     (* Generalization. *)
   | ML.Let (x, ann, t, u) ->
 
+     (* Extend bound type variables environment.  This ensures quantifiers
+        introduced in an annotation are visible in the bound term and can be
+        used in annotations. *)
      let bound_env = match ann with
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
 
-      (* Construct a ``let'' constraint. *)
+     (* When value restriction is enabled and we let-bind a non-guarded
+        expression (either an application or a frozen variable) we treat this
+        binding as if it was a lambda abstraction.  In other words let
+        expression of the form:
+
+          let x : ty = t in u
+
+        is treated as
+
+          (\x:ty. u) t
+
+        which means we generate constraints as if it was a combination of lambda
+        abstraction and application, but in the resulting System F term we
+        reconstruct a let binding.  *)
      if value_restriction && not (is_gval t) then
-       (* (\x:ty. u) t*)
        begin
          match ann with
          | None ->
@@ -434,6 +449,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
               F.Let (x, t', u')
        end
      else begin
+      (* Construct a ``let'' constraint. *)
       let ty = Inferno.Option.map (annotation_to_variable true bound_env) ann in
       let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
       <$$> fun (t, a, t', u') ->
