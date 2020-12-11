@@ -5,8 +5,6 @@
 
 (* The unifier will use the following type structure. *)
 
-let value_restriction = true
-
 module S = struct
 
   type 'a structure =
@@ -319,8 +317,10 @@ let coerce (vs1 : O.tyvar list) (vs2 : O.tyvar list) : coercion =
    suitable combinators, such as [def]. *)
 
 (* BEGIN HASTYPE *)
-let rec hastype (env : int list) (t : ML.term) (w : variable) : F.nominal_term co
-= match t with
+let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
+                (w : variable) : F.nominal_term co
+= let hastype = hastype value_restriction in
+  match t with
 
   | ML.Int x ->
      w --- S.TyInt <$$> fun () -> F.Int x
@@ -492,9 +492,9 @@ exception UnifyMono = Solver.UnifyMono
 exception Cycle = Solver.Cycle
 exception MismatchedQuantifiers = Solver.MismatchedQuantifiers
 
-let translate (t : ML.term) : F.nominal_term =
+let translate (value_restriction : bool) (t : ML.term) : F.nominal_term =
   solve false (
-    let0 (exist_ (hastype [] t)) <$$> fun (vs, t) ->
+    let0 (exist_ (hastype value_restriction [] t)) <$$> fun (vs, t) ->
     (* [vs] are the binders that we must introduce *)
     F.ftyabs vs t
   )
