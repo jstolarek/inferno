@@ -3,7 +3,7 @@ open F
 open Result
 
 let verbose =
-  true
+  false
 
 (* -------------------------------------------------------------------------- *)
 
@@ -1383,6 +1383,23 @@ let fml_choose_choose_let =
 
 
 (*
+   term : (λ(f : (∀ a. a → a → a) → (∀ a. a → a → a)). f ~choose) (choose ~choose)
+   type : ∀ a. a → a → a
+*)
+let fml_choose_choose_lambda =
+  { name = "choose_choose_lambda"
+  ; term = (fml_choose)
+           (app (ML.Abs ( "f"
+                        , Some (TyArrow
+                                  ((TyForall (1, TyArrow (TyVar 1, TyArrow (TyVar 1, TyVar 1)))),
+                                   (TyForall (1, TyArrow (TyVar 1, TyArrow (TyVar 1, TyVar 1))))))
+                        , app f (frozen "choose")))
+                (app choose (frozen "choose")))
+  ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyArrow (TyVar 0, TyVar 0))))
+  }
+
+
+(*
    term : (λx.x) ~auto
    type : (∀ a. a → a) → (∀ a. a → a)
 *)
@@ -1701,7 +1718,6 @@ let fml_e3_dot_no_lambda_sig =
   }
 
 let () =
-(*
   test env_test;
   (* PLDI paper examples *)
   test a1;
@@ -1780,6 +1796,7 @@ let () =
   test fml_id_appl;
   test fml_choose_choose;
   test fml_choose_choose_let;
+  test fml_choose_choose_lambda;
   test fml_id_auto_1;
   test fml_id_auto_2;
 
@@ -1805,7 +1822,5 @@ let () =
   test fml_mono_gen_test1;
   test fml_mono_gen_test2;
   test fml_e3_dot_no_lambda_sig
-*)
-  test fml_choose_choose_let
 
 let () = print_summary_and_exit ()
