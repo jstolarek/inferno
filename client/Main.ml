@@ -1432,12 +1432,28 @@ let fml_choose_choose =
   }
 
 (*
-   term : let (f : (∀ a. a → a → a) → (∀ a. a → a → a)) = choose ~choose
-          in f ~choose
+   term : let f = choose ~choose in f ~choose
    type : ∀ a. a → a → a
 *)
 let fml_choose_choose_let =
   { name = "choose_choose_let"
+  ; term = (fml_choose)
+  (ML.Let ( "f"
+          , None
+          , app choose (frozen "choose")
+          , app (var "f") (frozen "choose")))
+  ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyArrow (TyVar 0, TyVar 0))))
+  ; vres = true
+  }
+
+
+(*
+   term : let (f : (∀ a. a → a → a) → (∀ a. a → a → a)) = choose ~choose
+          in f ~choose
+   type : ∀ a. a → a → a
+*)
+let fml_choose_choose_let_annot =
+  { name = "choose_choose_let_annot"
   ; term = (fml_choose)
   (ML.Let ( "f"
           , Some (TyArrow
@@ -1885,6 +1901,7 @@ let () =
   test fml_id_appl;
   test fml_choose_choose;
   test fml_choose_choose_let;
+  test fml_choose_choose_let_annot;
   test fml_choose_choose_lambda;
   test fml_id_auto_1;
   test fml_id_auto_2;
