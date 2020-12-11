@@ -842,7 +842,7 @@ let f9_annot =
            (ML.Let ( "f"
                    , Some (TyForall (2, TyArrow (TyArrow
                              (TyForall (1, TyArrow (TyVar 1, TyVar 1)),
-                           TyVar 2), TyVar 2) ))
+                           TyVar 2), TyVar 2)))
                    , app (var "revapp") (frozen "id")
                    , app (var "f") poly))
   ; typ  = Some (TyProduct (TyInt, TyBool))
@@ -1822,6 +1822,33 @@ let fml_e3_dot_no_lambda_sig =
   ; vres = true
   }
 
+(*
+   term : revapp ~id
+   type : ∀ b. ((∀ a. a → a) → b) → b
+*)
+let fml_free_unification_vars_1 =
+  { name = "free_unification_vars_1"
+  ; term = (fml_id << fml_revapp)
+           (app (var "revapp") (frozen "id"))
+  ; typ  = Some (TyForall ((), TyArrow (TyArrow
+                (TyForall ((), TyArrow (TyVar 0, TyVar 0)), TyVar 0), TyVar 0)))
+  ; vres = true
+  }
+
+(*
+   term : let f = revapp ~id in f
+   type : ∀ b. ((∀ a. a → a) → b) → b
+*)
+let fml_free_unification_vars_2 =
+  { name = "free_unification_vars_2"
+  ; term = (fml_id << fml_revapp)
+           (ML.let_ ("f", (app (var "revapp") (frozen "id")), f))
+  ; typ  = Some (TyForall ((), TyArrow (TyArrow
+                (TyForall ((), TyArrow (TyVar 0, TyVar 0)), TyVar 0), TyVar 0)))
+  ; vres = true
+  }
+
+
 let () =
   test env_test;
   (* PLDI paper examples *)
@@ -1927,6 +1954,9 @@ let () =
 
   test fml_mono_gen_test1;
   test fml_mono_gen_test2;
-  test fml_e3_dot_no_lambda_sig
+  test fml_e3_dot_no_lambda_sig;
+
+  test fml_free_unification_vars_1;
+  test fml_free_unification_vars_2
 
 let () = print_summary_and_exit ()
