@@ -251,7 +251,6 @@ let rec align_order equal xs ys = match xs, ys with
    No type environment is required, as everything is built into the constraint via
    suitable combinators, such as [def]. *)
 
-(* BEGIN HASTYPE *)
 let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                 (w : variable) : F.nominal_term co
 = let hastype = hastype value_restriction in
@@ -388,26 +387,21 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
       let ty = Inferno.Option.map (annotation_to_variable true bound_env) ann in
       let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
       <$$> fun (t, a, t', u') ->
-      (* [a] are the type variables that we must introduce (via Lambda-abstractions)
-         while type-checking [t]. [(b, _)] is the type scheme that [x] must receive
-         while type-checking [u]. Its quantifiers [b] are guaranteed to form a subset of
-         [a]. Hence, in general, we must re-bind [x] to an application of a suitable
-         coercion to [x]. We use smart constructors so that, if the lists [a] and
-         [b] happen to be equal, no extra code is produced. *)
+           (* [a] are the type variables that we must introduce (via
+              Lambda-abstractions) while type-checking [t']. [t] is a type of
+              bound terms.  Let us denote quantifiers of [t] as [b].  In
+              FreezeML [a] is a subset of [b].  Consider:
 
-      (* JSTOLAREK: The above no longer holds in FreezeML.  Consider:
+                let x = auto ~id in ...
 
-           let x = auto ~id in ...
+              There is no need to bind any type variables using
+              Lambda-abstraction in the body of bound term (therefore [a] is
+              empty) but [x] has the type scheme [forall a. a -> a], making [b]
+              non-empty.  When [a] is not empty its variables must appear in the
+              same order as they appear in [b]. *)
 
-         There is no need to bind any type variables using Lambda-abstraction in
-         the body of bound term (therefore [a] is empty) but [x] has the type
-         scheme [forall a. a -> a], making [b] non-empty. *)
-
-      let (b, _) = O.to_scheme t in
-
-      F.Let (x, F.ftyabs (align_order (==) b a) t', u')
+           F.Let (x, F.ftyabs (align_order (==) (fst (O.to_scheme t)) a) t', u')
       end
-(* END HASTYPE *)
 
     (* Pair. *)
   | ML.Pair (t1, t2) ->
