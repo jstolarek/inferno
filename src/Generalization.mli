@@ -1,17 +1,19 @@
 (******************************************************************************)
 (*                                                                            *)
-(*                                  Inferno                                   *)
+(*                            Inferno / FreezeML(X)                           *)
 (*                                                                            *)
 (*                       François Pottier, Inria Paris                        *)
+(*                   Jan Stolarek, University of Edingurgh                    *)
 (*                                                                            *)
-(*  Copyright Inria. All rights reserved. This file is distributed under the  *)
-(*  terms of the MIT License, as described in the file LICENSE.               *)
+(*  Copyright Inria. Copyright University of Edinburgh. All rights reserved.  *)
+(*  This file is distributed under the terms of the MIT License, as described *)
+(*  in the file LICENSE.                                                      *)
 (*                                                                            *)
 (******************************************************************************)
 
 open UnifierSig
 
-(* This module takes care of creating and instantiating type schemes. It is
+(* This module takes care of creating and instantiating quantified types. It is
    parameterized over the type structure and over a unifier. *)
 
 module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure) : sig
@@ -27,7 +29,12 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
      One may think of a type scheme as a fragment of the unification graph,
      part of which is marked ``generic'' and is meant to be copied when the
      type scheme is instantiated, part of which is not (the free variables, so
-     to speak). *)
+     to speak).
+
+     In first-class polymorphism we don't really have type schemes as a
+     distinguished syntactic construct: quantified types are now first-class
+     citizens. We keep the type scheme definition intact though since it is a
+     convenient data representation within the solver. *)
 
   type scheme
 
