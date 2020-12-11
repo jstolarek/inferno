@@ -1,4 +1,4 @@
-let enabled     = false
+let enabled     = true
 let hard        = true
 let print_ranks = true
 let fuel        = 8

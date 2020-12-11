@@ -5,6 +5,8 @@
 
 (* The unifier will use the following type structure. *)
 
+let value_restriction = true
+
 module S = struct
 
   type 'a structure =
@@ -402,17 +404,35 @@ let rec hastype (env : int list) (t : ML.term) (w : variable) : F.nominal_term c
       F.App (t1', t2')
 
     (* Generalization. *)
-  | ML.Let (x, ty, t, u) ->
+  | ML.Let (x, ann, t, u) ->
 
-     let bound_env = match ty with
+     let bound_env = match ann with
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
 
-     let ty = Inferno.Option.map (annotation_to_variable true bound_env) ty in
-
       (* Construct a ``let'' constraint. *)
-      let1 x ty (is_gval t) (hastype bound_env t)
-        (hastype env u w)
+     if value_restriction && not (is_gval t) then
+       (* (\x:ty. u) t*)
+       begin
+         match ann with
+         | None ->
+               exist (fun v1 ->
+                   hastype env t v1 ^&
+                   def x v1 (hastype env u w)
+            ) <$$> fun (_ty', (t', u')) ->
+              F.Let (x, t', u')
+         | Some ty ->
+            exist (fun v ->
+               exists_sig (annotation_to_variable false env ty) (fun v1 ->
+                   v --- arrow v1 w ^&
+                   hastype env t v1 ^&
+                   def x v1 (hastype env u w))
+            ) <$$> fun (_ty', (_ty2', ((), (t', u')))) ->
+              F.Let (x, t', u')
+       end
+     else begin
+      let ty = Inferno.Option.map (annotation_to_variable true bound_env) ann in
+      let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
       <$$> fun (t, a, t', u') ->
       (* [a] are the type variables that we must introduce (via Lambda-abstractions)
          while type-checking [t]. [(b, _)] is the type scheme that [x] must receive
@@ -432,6 +452,7 @@ let rec hastype (env : int list) (t : ML.term) (w : variable) : F.nominal_term c
       let (b, _) = O.to_scheme t in
 
       F.Let (x, F.ftyabs (align_order (==) b a) t', u')
+      end
 (* END HASTYPE *)
 
     (* Pair. *)
