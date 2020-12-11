@@ -195,7 +195,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
         debug_unify_after v
     | CFrozen (x, w) ->
         let s = try XMap.find x env with Not_found -> raise (Unbound x) in
-        let qs, body = G.freeze state s in
+        let qs, body = G.quantifiers s, G.body s in
         List.iter U.skolemize qs;
         let v = fresh (Some (S.forall qs body)) in
         G.register state v;

@@ -151,6 +151,4 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
 
   val instantiate: state -> scheme -> variable list * variable
 
-  val freeze     : state -> scheme -> variable list * variable
-
 end
