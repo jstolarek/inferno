@@ -507,11 +507,11 @@ let env_test =
 
 (* PLDI paper examples (Figure 2) *)
 
-(* Note: inferno does not permit unbound type variables.  Therefore in the
-   inferred types all free type variables are bound at the program's top level.
-   In the examples below type variables bound at program top level are placed in
-   braces to explicitly mark they are not per se part of the type inferred for
-   the term.  Concretely, if the inferred type is:
+(* Note: inferno does not permit unbound type variables in the resulting System
+   F term.  Therefore in the inferred types all free type variables are bound at
+   the program's top level.  In the examples below type variables bound at
+   program top level are placed in braces to explicitly mark they are not per se
+   part of the type inferred for the term.  Concretely, if the inferred type is:
 
      [∀ b. ∀ a.] a → b → b
 
