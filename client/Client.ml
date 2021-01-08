@@ -381,12 +381,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                solve the def constraint. *)
             exist (fun v2 ->
                 exists_sig (annotation_to_variable false env ty) (fun v1 ->
-                    exist (fun v ->
-                        v --- arrow v1 w ^&
                           hastype env t v2 ^&
-                            def x v1 (hastype env u w) ^& v2 -- v1))
+                            def x v1 (hastype env u w) ^& v2 -- v1)
               ) <$$>
-              fun (_ty', (_ty2', (_, ((), (t', (u',())))))) ->
+              fun (_ty', (_ty2', (t', (u',())))) ->
               F.Let (x, t', u')
        end
      else begin
