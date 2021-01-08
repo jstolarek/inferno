@@ -385,7 +385,6 @@ let remove_from_pool ({ pool; _ } as state) vs =
                                             (InfiniteArray.get pool k))
     done
 
-
 (* -------------------------------------------------------------------------- *)
 
 (* [enter] simply increments the current rank by one. The corresponding pool is
