@@ -372,6 +372,13 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                  fun (_ty', (t', u')) ->
                  F.Let (x, t', u')
          | Some ty ->
+            (* This implements equation (7) of constraint generation rules.
+               Compared to the paper the implementation introduces an extra
+               existential variable v2 that is absent from the paper.  The
+               reason is the fact that v1 is equipped with a structure (coming
+               from the signature) that has to be properly registered by the
+               generalisation engine, but registration only happens when we
+               solve the def constraint. *)
             exist (fun v2 ->
                 exists_sig (annotation_to_variable false env ty) (fun v1 ->
                     exist (fun v ->
