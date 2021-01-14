@@ -282,7 +282,8 @@ and unify_descriptors t desc1 desc2 =
      if (id1 <> id2) then raise UnifySkolemInternal;
      assert (desc1.structure = None);
      assert (desc2.structure = None);
-     assert (desc1.rank = desc2.rank);
+     assert (desc1.rank = -1);
+     assert (desc2.rank = -1);
      {
       id          = id1;
       structure   = None;
@@ -297,7 +298,7 @@ and unify_descriptors t desc1 desc2 =
      raise UnifySkolemInternal
 
   | _, _ ->
-     (* Mixed-preifx unification: don't unify quantified type variables with
+     (* Mixed-prefix unification: don't unify quantified type variables with
         out-of-scope existentials. *)
      if (desc2.skolem && desc1.rank != -1) || (desc1.skolem && desc2.rank != -1)
      then raise UnifySkolemInternal;
