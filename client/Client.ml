@@ -367,9 +367,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
          | None ->
                exist (fun v1 ->
                    hastype env t v1 ^&
-                   def x v1 (hastype env u w)
+                   def x v1 (hastype env u w) ^&
+                   mono x v1
             ) <$$>
-                 fun (_ty', (t', u')) ->
+                 fun (_ty', (t', (u',()))) ->
                  F.Let (x, t', u')
          | Some ty ->
             (* This implements equation (7) of constraint generation rules.
