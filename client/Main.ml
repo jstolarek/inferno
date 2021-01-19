@@ -1848,6 +1848,18 @@ let fml_free_unification_vars_2 =
   ; vres = true
   }
 
+(*
+   term : let f = id id in f ~id
+   type : X
+*)
+let fml_value_restriction_1 =
+  { name = "fml_value_restriction_1"
+  ; term = (fml_id)
+           (ML.let_ ("f", (app id id), app f (frozen "id")))
+  ; typ  = None
+  ; vres = true
+  }
+
 
 let () =
   test env_test;
@@ -1957,6 +1969,8 @@ let () =
   test fml_e3_dot_no_lambda_sig;
 
   test fml_free_unification_vars_1;
-  test fml_free_unification_vars_2
+  test fml_free_unification_vars_2;
+
+  test fml_value_restriction_1
 
 let () = print_summary_and_exit ()
