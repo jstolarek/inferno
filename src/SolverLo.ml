@@ -387,14 +387,14 @@ let solve (rectypes : bool) (c : rawco) : unit =
         solve env c2
 
     | PMono (x, v) ->
-       Debug.print ( string "Imposing monomorphic constraint on variable "
+       U.monomorphize v;
+       Debug.print ( string "Imposed monomorphic constraint on variable "
                   ^^ print_tevar x
-                  ^^ string ", represented by type variable " ^^ print_var v);
-       U.monomorphize v
+                  ^^ string ", represented by type variable " ^^ print_var v)
 
     | PMonoInst (x, v) ->
        List.iter (U.monomorphize) (G.unbound_tyvars (G.scheme v));
-       Debug.print ( string "Imposing monomorphic instantiation constraint on variable "
+       Debug.print ( string "Imposed monomorphic instantiation constraint on variable "
                   ^^ print_tevar x
                   ^^ string ", represented by type variable " ^^ print_var v)
 
