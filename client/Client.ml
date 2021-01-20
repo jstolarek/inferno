@@ -390,7 +390,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
        end
      else begin
       (* Construct a ``let'' constraint. *)
-      let ty = Inferno.Option.map (annotation_to_variable true bound_env) ann in
+      let ty = Inferno.Option.map (annotation_to_variable true env) ann in
       let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
       <$$> fun (t, a, t', u') ->
            (* [a] are the type variables that we must introduce (via
