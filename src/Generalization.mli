@@ -97,6 +97,7 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
   val scheme                        : variable -> scheme
   val bound_quantifiers             : scheme -> variable list
   val unbound_quantifiers           : scheme -> variable list
+  val unbound_tyvars                : scheme -> variable list
   val flatten_outer_foralls         : scheme -> scheme
   val toplevel_generic_variables    : variable -> variable list
   val all_generic_vars_bound        : scheme -> bool

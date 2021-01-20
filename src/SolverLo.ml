@@ -107,6 +107,7 @@ type rawco =
         * variable list WriteOnceRef.t
   (* Predicates *)
   | PMono of tevar * variable
+  | PMonoInst of tevar * variable
 
 (* -------------------------------------------------------------------------- *)
 
@@ -390,6 +391,13 @@ let solve (rectypes : bool) (c : rawco) : unit =
                   ^^ print_tevar x
                   ^^ string ", represented by type variable " ^^ print_var v);
        U.monomorphize v
+
+    | PMonoInst (x, v) ->
+       List.iter (U.monomorphize) (G.unbound_tyvars (G.scheme v));
+       Debug.print ( string "Imposing monomorphic instantiation constraint on variable "
+                  ^^ print_tevar x
+                  ^^ string ", represented by type variable " ^^ print_var v)
+
 
   in
   solve XMap.empty c

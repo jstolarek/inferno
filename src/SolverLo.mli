@@ -101,6 +101,7 @@ module Make
         * variable list WriteOnceRef.t
 
   | PMono of tevar * variable
+  | PMonoInst of tevar * variable
 
   (* ---------------------------------------------------------------------- *)
 

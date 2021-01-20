@@ -216,6 +216,28 @@ let unbound_quantifiers { quantifiers; body } =
   let inScope : unit U.VarMap.t = extend_env (U.VarMap.create 8) quantifiers
   in Utility.unduplicate U.equivalent (go inScope body [])
 
+(* Returns all unbound type variables (no structure, positive rank) in a scheme *)
+let unbound_tyvars { quantifiers; body } =
+  let extend_env env vs = List.fold_left (fun acc v ->
+      (* Only register variables without structure. *)
+      if (not (U.has_structure v)) then U.VarMap.add acc v ();
+      acc
+    ) env vs in
+  let rec go inScope v acc =
+    try
+      U.VarMap.find inScope v;
+      acc (* variable in scope, all fine *)
+    with Not_found ->
+      if (U.rank v > 0 && not (U.has_structure v))
+      then v :: acc (* Unbound generic variable that we're looking for *)
+      else
+        let { quantifiers; body } = scheme v in
+        match U.structure body with
+        | None   -> if (U.rank v > 0) then v :: acc else acc
+        | Some s -> S.fold (go (extend_env inScope quantifiers)) s acc in
+  let inScope : unit U.VarMap.t = extend_env (U.VarMap.create 8) quantifiers
+  in Utility.unduplicate U.equivalent (go inScope body [])
+
 (* Returns all bound quantifiers in a scheme, including nested ones. *)
 let bound_quantifiers { quantifiers; body } =
   let rec go v acc =
