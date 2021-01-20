@@ -374,7 +374,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                  fun (_ty', (t', ((), u'))) ->
                  F.Let (x, t', u')
          | Some ty ->
-            (* This implements equation (7) of constraint generation rules.
+            (* This implements C-LetAscribe constraint generation rule.
                Compared to the paper the conjuncts order is reversed.  This is
                crucial!  Existential v1 is equipped with a structure that comes
                from a signature, and that structure needs to be properly
