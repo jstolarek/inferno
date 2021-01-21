@@ -84,7 +84,6 @@ module S = struct
        parens (f fuel t1 ^^ space ^^ string "->" ^^ space ^^ f fuel t2)
     | TyProduct (t1, t2) ->
        parens (f fuel t1 ^^ string "×" ^^ f fuel t2)
-    | TyForall  ([],  t) -> f fuel t
     | TyForall  (qs,  t) ->
        string "forall " ^^ lbracket ^^
        separate (comma ^^ space) (List.map (fun q -> f fuel q) qs) ^^
