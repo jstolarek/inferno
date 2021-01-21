@@ -74,10 +74,8 @@ let print_vars vs =
 
 let print_scheme scheme =
   let open PPrint in
-  match G.quantifiers scheme with
-  | [] -> print_var (G.body scheme)
-  | qs -> string "forall " ^^ print_vars qs ^^ dot ^^ space ^^
-            print_var (G.body scheme)
+  string "forall " ^^ print_vars (G.quantifiers scheme) ^^ dot ^^ space ^^
+    print_var (G.body scheme)
 
 let print_schemes vs =
   let open PPrint in
