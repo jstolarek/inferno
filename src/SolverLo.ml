@@ -182,6 +182,9 @@ let solve (rectypes : bool) (c : rawco) : unit =
     | CInstance (x, w, witnesses_hook) ->
         (* The environment provides a type scheme for [x]. *)
         let s = try XMap.find x env with Not_found -> raise (Unbound x) in
+        (* Flatten nested quantifiers so that all quantifiers get
+           instantiated.  See bug #30. *)
+        let s = G.flatten_outer_foralls s in
         (* Instantiating this type scheme yields a variable [v], which we unify with
            [w]. It also yields a list of witnesses, which we record, as they will be
            useful during the decoding phase. *)
@@ -196,8 +199,13 @@ let solve (rectypes : bool) (c : rawco) : unit =
         let s = try XMap.find x env with Not_found -> raise (Unbound x) in
         let qs, body = G.quantifiers s, G.body s in
         List.iter U.skolemize qs;
-        let v = fresh (Some (S.forall qs body)) in
-        G.register state v;
+        (* If the type is quantified we need to create a fresh variable that has
+           structure corresponding to the scheme.  If the type isn't quantified
+           we just use its body. See bug #30. *)
+        let v = if qs != []
+                then let v = fresh (Some (S.forall qs body)) in
+                     G.register state v; v
+                else body in
         debug_unify_before (string "Freezing variable " ^^
           print_tevar x ^^ space ^^ colon ^^ space ^^ print_scheme s ^^ dot ^^
           hardline) v w;
