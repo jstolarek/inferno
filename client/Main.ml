@@ -379,6 +379,9 @@ let z =
 let f =
   var "f"
 
+let g =
+  var "g"
+
 let id =
   var "id"
 
@@ -442,8 +445,8 @@ let fml_revapp k = ML.let_ ("revapp", abs "x" (abs "f" (app f x)), k)
 let fml_zero k = ML.let_ ("zero", ML.Abs ("x", Some TyInt, ML.Int 0), k)
 
 (* poly : (∀ a. a → a) → (Int × Bool) *)
-let fml_poly k = ML.let_ ("poly", ML.Abs ("f", forall_a_a_to_a,
-   ML.Pair (app f one, app f tru)), k)
+let fml_poly k = ML.let_ ("poly", ML.Abs ("g", forall_a_a_to_a,
+   ML.Pair (app g one, app g tru)), k)
 
 (* pair : ∀ a b. a → b → (a × b) *)
 let fml_pair k = ML.Let ("pair",
@@ -904,7 +907,7 @@ let bad3 =
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
                     ML.let_ ("f", app (var "bot") (var "bot"),
-                             (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
+                            (ML.Pair (app poly (frozen "f"), app (var "f") one)))))
   ; typ  = None
   ; vres = true
   }
@@ -919,7 +922,7 @@ let bad4 =
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
                     ML.let_ ("f", app (var "bot") (var "bot"),
-                             (ML.Pair (app poly (frozen "f"), app (var "f") one)))))
+                            (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
   ; typ  = None
   ; vres = true
   }
@@ -1438,10 +1441,9 @@ let fml_choose_choose =
 let fml_choose_choose_let =
   { name = "choose_choose_let"
   ; term = (fml_choose)
-  (ML.Let ( "f"
-          , None
-          , app choose (frozen "choose")
-          , app (var "f") (frozen "choose")))
+  (ML.let_ ( "f"
+           , app choose (frozen "choose")
+           , app f (frozen "choose")))
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyArrow (TyVar 0, TyVar 0))))
   ; vres = true
   }
