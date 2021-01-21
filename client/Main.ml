@@ -912,6 +912,19 @@ let bad3 =
   ; vres = true
   }
 
+(* term               : λ(bot : ∀ a. a). let f = bot bot in (poly ~f, f 1)
+   inferred type      : None
+ *)
+let bad3_no_value_restriction =
+  { name = "bad3_no_value_restriction"
+  ; term = (fml_poly)
+           (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
+                    ML.let_ ("f", app (var "bot") (var "bot"),
+                            (ML.Pair (app poly (frozen "f"), app (var "f") one)))))
+  ; typ  = None
+  ; vres = false
+  }
+
 (* example            : bad4
    term               : λ(bot : ∀ a. a). let f = bot bot in (f 1, poly ~f)
    inferred type      : X
@@ -919,6 +932,19 @@ let bad3 =
  *)
 let bad4 =
   { name = "bad4"
+  ; term = (fml_poly)
+           (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
+                    ML.let_ ("f", app (var "bot") (var "bot"),
+                            (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
+  ; typ  = None
+  ; vres = false
+  }
+
+(* term               : λ(bot : ∀ a. a). let f = bot bot in (f 1, poly ~f)
+   inferred type      : X
+ *)
+let bad4_no_value_restriction =
+  { name = "bad4_no_value_restriction"
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
                     ML.let_ ("f", app (var "bot") (var "bot"),
@@ -1896,7 +1922,9 @@ let () =
   test bad1;
   test bad2;
   test bad3;
+  test bad3_no_value_restriction;
   test bad4;
+  test bad4_no_value_restriction;
   test bad5;
   test bad6;
 
