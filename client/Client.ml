@@ -382,7 +382,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                comes first. *)
             exists_sig (annotation_to_variable false env ty) (fun v1 ->
                     def x v1 (hastype env u w) ^&
-                      hastype env t v1
+                      hastype bound_env t v1
               ) <$$>
               fun (_ty', (u', t')) ->
               F.Let (x, t', u')
