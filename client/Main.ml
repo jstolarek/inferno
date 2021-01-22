@@ -1365,6 +1365,28 @@ let fml_let_annot_9_no_annot =
   }
 
 (*
+   term: let f : ∀a b. a → b → b =
+           let g : ∀ b. a → b → b = λy.λz.z in id ~g
+         in f
+   type: ∀a b. a → b → b
+   bug: #31
+*)
+let fml_let_annot_10 =
+  { name = "let_annot_10"
+  ; term = (fml_id)
+           (ML.Let ( "f"
+                   , Some (TyForall (1, TyForall (2, TyArrow (TyVar 1, TyArrow (TyVar 2, TyVar 2)))))
+                   , ML.Let ( "g"
+                            , Some (TyForall (2, TyArrow (TyVar 1, TyArrow (TyVar 2, TyVar 2))))
+                            , ML.Abs ("y", Some (TyVar 1), abs "z" z)
+                            , app id (frozen "g")
+                            )
+                   , f))
+  ; typ  = Some (TyForall ((), TyForall ((), TyArrow (TyArrow (TyVar 1, TyVar 0), TyVar 0))))
+  ; vres = true
+  }
+
+(*
    term : λx. choose ~id x
    type : X
 *)
@@ -1959,6 +1981,7 @@ let () =
   test fml_let_annot_8_quantifier_shadowing;
   test fml_let_annot_9;
   test fml_let_annot_9_no_annot;
+  known_broken_test fml_let_annot_10;
 
   test fml_mono_binder_constraint_1;
   test fml_mono_binder_constraint_2;
