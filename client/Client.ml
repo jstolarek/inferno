@@ -340,13 +340,17 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
        begin
          match ann with
          | None ->
-               exist (fun v1 ->
+               (*exist (fun v1 ->*)
+                   let1_mono x None false (hastype env t) (hastype env u w)
+
+(*
                    hastype env t v1 ^&
                    (* order of constraints important here! *)
                    mono_inst x v1 ^&
                    def x v1 (hastype env u w)
-            ) <$$>
-                 fun (_ty', (t', ((), u'))) ->
+*)
+             <$$>
+                 fun (_, _, t', u') ->
                  F.Let (x, t', u')
          | Some ty ->
             (* This implements C-LetAscribe constraint generation rule.
@@ -356,12 +360,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                registered with the generalisation engine before being used.
                Registration is carried out by `def`, hence it is important it
                comes first. *)
-            exist ?v:(Some (annotation_to_variable false env ty)) (fun v1 ->
-                    def x v1 (hastype env u w) ^&
-                      hastype bound_env t v1
-              ) <$$>
-              fun (_ty', (u', t')) ->
-              F.Let (x, t', u')
+            let1_mono x (Some (annotation_to_variable true env ty)) false (hastype bound_env t) (hastype env u w)
+             <$$>
+                 fun (_, _, t', u') ->
+                 F.Let (x, t', u')
        end
      else begin
       (* Construct a ``let'' constraint. *)
