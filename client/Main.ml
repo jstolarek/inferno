@@ -1496,7 +1496,6 @@ let fml_choose_choose_let =
   ; vres = true
   }
 
-
 (*
    term : let (f : (∀ a. a → a → a) → (∀ a. a → a → a)) = choose ~choose
           in f ~choose
@@ -1515,7 +1514,6 @@ let fml_choose_choose_let_annot =
   ; vres = true
   }
 
-
 (*
    term : (λ(f : (∀ a. a → a → a) → (∀ a. a → a → a)). f ~choose) (choose ~choose)
    type : ∀ a. a → a → a
@@ -1533,7 +1531,6 @@ let fml_choose_choose_lambda =
   ; vres = true
   }
 
-
 (*
    term : (λx.x) ~auto
    type : (∀ a. a → a) → (∀ a. a → a)
@@ -1545,7 +1542,6 @@ let fml_id_auto_1 =
   ; typ  = None
   ; vres = true
   }
-
 
 (*
    term : (id (λx.x)) ~auto
@@ -1565,7 +1561,6 @@ let fml_id_auto_2 =
          x (~z)
    type: Int
 *)
-
 let fml_alpha_equiv_1 =
   { name = "alpha_equiv_1"
   ; term = ML.Let ( "x"
@@ -1584,8 +1579,7 @@ let fml_alpha_equiv_1 =
          let (z : ∀ c. ∀ d. c → c) = λw. w in
          x (~z)
    type: Int
- *)
-
+*)
 let fml_alpha_equiv_2 =
   { name = "alpha_equiv_2"
   ; term = ML.Let ( "x"
@@ -1605,7 +1599,6 @@ let fml_alpha_equiv_2 =
          x (~z)
    type: Int
 *)
-
 let fml_alpha_equiv_3 =
   { name = "alpha_equiv_3"
   ; term = ML.Let ( "x"
@@ -1625,7 +1618,6 @@ let fml_alpha_equiv_3 =
          x (~z)
    type: Int
 *)
-
 let fml_alpha_equiv_4 =
   { name = "alpha_equiv_4"
   ; term = ML.Let ( "x"
@@ -1645,7 +1637,6 @@ let fml_alpha_equiv_4 =
          x (~z)
    type: X
 *)
-
 let fml_alpha_equiv_5 =
   { name = "alpha_equiv_5"
   ; term = ML.Let ( "x"
@@ -1753,7 +1744,6 @@ let fml_mixed_prefix_4 =
          x (~y)
    type: [∀ a.] Int
 *)
-
 let fml_poly_binding_1 =
   { name = "poly_binding_1"
   ; term = ML.Let ( "x"
@@ -1808,7 +1798,6 @@ let fml_poly_binding_4 =
   ; typ  = Some TyInt
   ; vres = true
   }
-
 
 (*
    term: let x : ∀ a. (a → a) → (a → a) = let y : a → a = λw.w
