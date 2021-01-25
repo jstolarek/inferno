@@ -163,6 +163,9 @@ module Make
   val let1: tevar -> variable option -> bool -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
 
+  val let1_mono: tevar -> variable option -> bool -> (variable -> 'a co) -> 'b co ->
+            (ty * tyvar list * 'a * 'b) co
+
   (* END HI *)
   (* [let0 c] has the same meaning as [c], but, like [let1], produces a list [vs]
      of the type variables that may appear in the result of [c]. The argument of
@@ -174,7 +177,7 @@ module Make
      [vs] to a constraint. The [i]-th term variable, [x_i], ends up bound to the
      constraint abstraction of the [i]-th type variable in [c_1], which one could
      write [\lambda v_i.c_1]. *)
-  val letn: (tevar * variable option * bool) list -> (variable list -> 'a co) -> 'b co ->
+  val letn: clet_type -> (tevar * variable option * bool) list -> (variable list -> 'a co) -> 'b co ->
             (ty list * tyvar list * 'a * 'b) co
 
   (* BEGIN HI *)

@@ -49,10 +49,6 @@ module Make
 
   type ischeme
 
-  type clet_type =
-  | CLetMono
-  | CLetGen
-
   (* The syntax of constraints is as follows. *)
   type rawco =
 

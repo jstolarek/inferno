@@ -89,10 +89,6 @@ let print_schemes vs =
    but not in the high-level interface [SolverHi]. So, it could be easily
    modified if desired. *)
 
-type clet_type =
-  | CLetMono
-  | CLetGen
-
 type rawco =
   (* Constraints *)
   | CTrue

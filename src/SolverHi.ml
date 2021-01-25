@@ -278,7 +278,7 @@ let mono_inst x v =
    the right-hand side, yet it defines a *family* of constraint abstractions,
    bound the term variables [xs]. *)
 
-let letn xs f1 (rc2, k2) =
+let letn clet_type xs f1 (rc2, k2) =
   (* For each term variable [x], create a fresh type variable [v], as in
      [CExist]. Also, create an uninitialized scheme hook, which will receive
      the type scheme of [x] after the solver runs. *)
@@ -297,7 +297,7 @@ let letn xs f1 (rc2, k2) =
      all generalizable variables in the left-hand side. *)
   let generalizable_hook = WriteOnceRef.create() in
   (* Build a [CLet] constraint. *)
-  CLet (CLetGen, xvss, vs, rc1, rc2, generalizable_hook),
+  CLet (clet_type, xvss, vs, rc1, rc2, generalizable_hook),
   fun env ->
     (* In the decoding phase, read the write-once references, *)
     let decode = env in
@@ -325,7 +325,11 @@ let single xs =
 (* [let1] is a special case of [letn], where only one term variable is bound. *)
 
 let let1 x ty is_gval f1 c2 =
-  letn [ x, ty, is_gval ] (fun vs -> f1 (single vs)) c2 <$$>
+  letn CLetGen [ x, ty, is_gval ] (fun vs -> f1 (single vs)) c2 <$$>
+  fun (ss, generalizable, v1, v2) -> (single ss, generalizable, v1, v2)
+
+let let1_mono x ty is_gval f1 c2 =
+  letn CLetMono [ x, ty, is_gval ] (fun vs -> f1 (single vs)) c2 <$$>
   fun (ss, generalizable, v1, v2) -> (single ss, generalizable, v1, v2)
 
 (* [let0] is a special case of [letn], where no term variable is bound, and
@@ -333,7 +337,7 @@ let let1 x ty is_gval f1 c2 =
    of every constraint. *)
 
 let let0 c1 =
-  letn [] (fun _ -> c1) (pure ()) <$$>
+  letn CLetGen [] (fun _ -> c1) (pure ()) <$$>
   fun (_, generalizable, v1, ()) -> (generalizable, v1)
 
 (* -------------------------------------------------------------------------- *)

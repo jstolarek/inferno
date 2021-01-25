@@ -13,6 +13,10 @@
 
 (* -------------------------------------------------------------------------- *)
 
+type clet_type =
+  | CLetMono
+  | CLetGen
+
 (* The type of term variables is described to the solver as follows. *)
 
 (* This signature is isomorphic to [Map.OrderedType] in OCaml's standard
