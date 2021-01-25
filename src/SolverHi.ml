@@ -114,9 +114,9 @@ let (^^) (rc1, k1) (rc2, k2) =
       Annotation on a let expression brings its quantifiers into scope in the
       bound term.  Variables in scope are tracked by the client and passed in
       as initial env to the function.  The extra flag determines whether these
-      quantifiers should be generic (for let expressins) or not (for lambdas).
+      quantifiers should be generic (for let expressions) or not (for lambdas).
       It is crucial that for lambda expressions we don't treat variables
-      introduced by quantifiers in a let signature as generic.
+      introduced by quantifiers in a signature as generic.
 
     * When traversing the body we must also carefully distinguish whether we
       generate generic or unregistered variables.  Starting at the top level we

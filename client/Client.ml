@@ -305,7 +305,9 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
      (* Construct an existential variable with structure defined by the type
         annotation. *)
 
-      exists_sig (annotation_to_variable false env ty) (fun v1 ->
+      let ann = annotation_to_variable false env ty in
+
+      exists_sig ann (fun v1 ->
 
         (* Here, we could use [exist_], because we do not need [ty2]. I refrain
            from using it, just to simplify the paper. *)
@@ -317,9 +319,9 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
           w --- arrow v1 v2 ^&
           (* Under the assumption that [x] has type [domain], the term [u] must
              have type [codomain]. *)
-          def x v1 (hastype env u v2)
+            let1_mono x (Some ann) false (fun v -> v -- v1) (hastype env u v2)
         )
-      ) <$$> fun (ty1, (_ty2, ((), u'))) ->
+      ) <$$> fun (ty1, (_ty2, ((), (_, _, (), u')))) ->
         (* Once these constraints are solved, we obtain the translated function
            body [u']. There remains to construct an explicitly-typed abstraction
            in the target calculus. *)

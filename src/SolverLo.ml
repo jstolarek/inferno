@@ -176,7 +176,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
         (* We assume that the variable [v] has been created fresh, so it
            is globally unique, it carries no structure, and its rank is
            [no_rank]. The combinator interface enforces this property. *)
-        G.register state v;
+        G.register_signatures state v;
         debug "Entering existential with unification variable " (print_var v);
         solve env c;
         debug "Exiting existential with unification variable " (print_var v)
@@ -235,8 +235,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
            but they also serve as named entry points. *)
         List.iter (G.register state) vs;
 
-        if (clet_type = CLetMono) then List.iter U.monomorphize vs;
-
         begin
           if ( List.length( xvss ) > 0 ) then
             Debug.print (nest 2
@@ -294,6 +292,8 @@ let solve (rectypes : bool) (c : rawco) : unit =
                    string "Inferred  : " ^^ print_scheme s) );
                 let annotation_scheme = G.scheme annotation in
                 List.iter U.skolemize (G.quantifiers annotation_scheme);
+                if (clet_type = CLetMono)
+                then List.iter U.monomorphize (G.quantifiers s);
                 debug_unify_before
                   (string "Unifying let annotation with inferred type of let body.")
                   (G.body annotation_scheme) (G.body s);
@@ -314,7 +314,11 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 annotation_scheme :: ss, generalizable
               end
             else
+              begin
+                if (clet_type = CLetMono)
+                then List.iter U.monomorphize (G.unbound_tyvars s);
                 s :: ss, generalizable
+                end
           ) ss xvss ([], generalizable) in
 
         if (clet_type = CLetGen) then List.iter U.unmonomorphize generalizable;
