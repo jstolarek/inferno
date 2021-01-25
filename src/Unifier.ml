@@ -114,6 +114,9 @@ let unskolemize v =
 let is_monomorphic v =
   (TUnionFind.find v).monomorphic
 
+let set_monomorphic v b =
+  (TUnionFind.find v).monomorphic <- b
+
 let unmonomorphize v =
   (TUnionFind.find v).monomorphic <- false
 
