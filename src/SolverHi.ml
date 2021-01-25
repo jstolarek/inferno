@@ -258,11 +258,11 @@ let letn clet_type xs f1 (rc2, k2) =
   (* For each term variable [x], create a fresh type variable [v], as in
      [CExist]. Also, create an uninitialized scheme hook, which will receive
      the type scheme of [x] after the solver runs. *)
-  let xvss = List.map (fun (x, ty, is_gval) ->
+  let xvss = List.map (fun (x, ty) ->
     let v = match ty with
       | None   -> fresh None
       | Some v -> v in
-    x, v, is_gval, WriteOnceRef.create()
+    x, v, WriteOnceRef.create()
   ) xs in
   (* Pass the vector of type variables to the user-supplied function [f1], as in
      [CExist].  These are fresh variables that we can later check against
@@ -280,7 +280,7 @@ let letn clet_type xs f1 (rc2, k2) =
     let generalizable =
       List.map decode_variable (WriteOnceRef.get generalizable_hook)
     and ss =
-      List.map (fun (_, _, _, scheme_hook) ->
+      List.map (fun (_, _, scheme_hook) ->
         decode_scheme decode (WriteOnceRef.get scheme_hook)
       ) xvss
     in
@@ -300,12 +300,12 @@ let single xs =
 
 (* [let1] is a special case of [letn], where only one term variable is bound. *)
 
-let let1 x ty is_gval f1 c2 =
-  letn CLetGen [ x, ty, is_gval ] (fun vs -> f1 (single vs)) c2 <$$>
+let let1 x ty f1 c2 =
+  letn CLetGen [ x, ty ] (fun vs -> f1 (single vs)) c2 <$$>
   fun (ss, generalizable, v1, v2) -> (single ss, generalizable, v1, v2)
 
-let let1_mono x ty is_gval f1 c2 =
-  letn CLetMono [ x, ty, is_gval ] (fun vs -> f1 (single vs)) c2 <$$>
+let let1_mono x ty f1 c2 =
+  letn CLetMono [ x, ty ] (fun vs -> f1 (single vs)) c2 <$$>
   fun (ss, generalizable, v1, v2) -> (single ss, generalizable, v1, v2)
 
 (* [let0] is a special case of [letn], where no term variable is bound, and

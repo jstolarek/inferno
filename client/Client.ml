@@ -294,7 +294,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
           w --- arrow v1 v2 ^&
           (* Under the assumption that [x] has type [domain], the term [u] must
              have type [codomain]. *)
-            let1_mono x ty false (fun v -> v -- v1) (hastype env u v2)
+            let1_mono x ty (fun v -> v -- v1) (hastype env u v2)
         )
       ) <$$> fun (ty1, (_ty2, ((), (_, _, (), u')))) ->
         (* Once these constraints are solved, we obtain the translated function
@@ -330,7 +330,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                 then let1_mono
                 else let1 in
 
-     let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w) <$$>
+     let1 x ty (hastype bound_env t) (hastype env u w) <$$>
        fun (t, a, t', u') ->
        (* [a] are the type variables that we must introduce (via
           Lambda-abstractions) while type-checking [t']. [t] is a type of bound

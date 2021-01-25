@@ -150,10 +150,10 @@ module Make
        [\Lambda vs.a1].
      - the value [a1] produced by the constraint [c1].
      - the value [a2] produced by the constraint [c2]. *)
-  val let1: tevar -> variable option -> bool -> (variable -> 'a co) -> 'b co ->
+  val let1: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
 
-  val let1_mono: tevar -> variable option -> bool -> (variable -> 'a co) -> 'b co ->
+  val let1_mono: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
 
   (* END HI *)
@@ -167,7 +167,7 @@ module Make
      [vs] to a constraint. The [i]-th term variable, [x_i], ends up bound to the
      constraint abstraction of the [i]-th type variable in [c_1], which one could
      write [\lambda v_i.c_1]. *)
-  val letn: clet_type -> (tevar * variable option * bool) list -> (variable list -> 'a co) -> 'b co ->
+  val letn: clet_type -> (tevar * variable option) list -> (variable list -> 'a co) -> 'b co ->
             (ty list * tyvar list * 'a * 'b) co
 
   (* BEGIN HI *)

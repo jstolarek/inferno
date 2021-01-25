@@ -98,7 +98,7 @@ type rawco =
   | CInstance of tevar * variable * variable list WriteOnceRef.t
   | CFrozen   of tevar * variable
   | CLet of clet_type
-        * (tevar * variable * bool * ischeme WriteOnceRef.t) list
+        * (tevar * variable * ischeme WriteOnceRef.t) list
         * variable list (* Proxy variables *)
         * rawco         (* Bound term *)
         * rawco         (* Let body *)
@@ -222,7 +222,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
           if ( List.length( xvss ) > 0 ) then
             Debug.print (nest 2
               (string "Entering let binding LHS.  Defined bindings:" ^^
-               hardline ^^ separate hardline (List.map (fun (x, v, _, _) ->
+               hardline ^^ separate hardline (List.map (fun (x, v, _) ->
                print_tevar x ^^ space ^^ colon ^^ space ^^ print_var v) xvss)))
           else
             Debug.print_str "Entering top-level binding"
@@ -262,12 +262,12 @@ let solve (rectypes : bool) (c : rawco) : unit =
            - unskolemize variables in the type signature
          *)
         let ss, generalizable = List.fold_right2
-         (fun s (_, annotation, is_gval, _) (ss, generalizable) ->
+         (fun s (_, annotation, _) (ss, generalizable) ->
             if ( U.has_structure annotation ) then
               begin
                 G.register_signatures state annotation;
                 Debug.print (nest 2
-                  ((if is_gval
+                  ((if clet_type = CLetGen
                     then string "Generalizable let-binder "
                     else string "Let-binder ") ^^
                    string "with type annotation:" ^^ hardline ^^
@@ -284,7 +284,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 debug_unify_after (G.body annotation_scheme);
                 List.iter U.unskolemize (G.quantifiers annotation_scheme);
                 let generalizable =
-                  if is_gval
+                  if clet_type = CLetGen
                   then G.quantifiers annotation_scheme
                   else begin
                       G.assert_variables_equal (G.quantifiers s)
@@ -352,7 +352,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
         if ( List.length( xvss ) > 0 ) then
           Debug.print_str "Typechecking of let bindings finished.  Adding bindings to environment:";
         let env =
-          List.fold_left2 (fun env (x, _, _, scheme_hook) s ->
+          List.fold_left2 (fun env (x, _, scheme_hook) s ->
             WriteOnceRef.set scheme_hook s;
             Debug.print (string "  " ^^ print_tevar x ^^ space ^^ colon ^^
                                space ^^ print_scheme s);
