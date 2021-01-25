@@ -89,6 +89,10 @@ let print_schemes vs =
    but not in the high-level interface [SolverHi]. So, it could be easily
    modified if desired. *)
 
+type clet_type =
+  | CLetMono
+  | CLetGen
+
 type rawco =
   (* Constraints *)
   | CTrue
@@ -98,7 +102,8 @@ type rawco =
   | CInstance of tevar * variable * variable list WriteOnceRef.t
   | CFrozen   of tevar * variable
   | CDef of tevar * variable * rawco
-  | CLet of (tevar * variable * bool * ischeme WriteOnceRef.t) list
+  | CLet of clet_type
+        * (tevar * variable * bool * ischeme WriteOnceRef.t) list
         * variable list (* Proxy variables *)
         * rawco         (* Bound term *)
         * rawco         (* Let body *)
@@ -225,7 +230,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
              print_scheme scheme);
        assert (G.all_generic_vars_bound scheme);
        Debug.print (string "Exiting scope of binding " ^^ print_tevar x)
-    | CLet (xvss, vs, c1, c2, generalizable_hook) ->
+    | CLet (clet_type, xvss, vs, c1, c2, generalizable_hook) ->
         (* Warn the generalization engine that we entering the left-hand side of
            a [let] construct. *)
         G.enter state;

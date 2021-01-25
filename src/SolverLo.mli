@@ -49,6 +49,10 @@ module Make
 
   type ischeme
 
+  type clet_type =
+  | CLetMono
+  | CLetGen
+
   (* The syntax of constraints is as follows. *)
   type rawco =
 
@@ -94,7 +98,8 @@ module Make
        [vs?] is filled with a list of type variables that must be universally
        quantified in the left-hand side of the [let] construct so as to be in
        scope when [C1] is decoded. *)
-  | CLet of (tevar * variable * bool * ischeme WriteOnceRef.t) list
+  | CLet of clet_type
+        * (tevar * variable * bool * ischeme WriteOnceRef.t) list
         * variable list
         * rawco
         * rawco
