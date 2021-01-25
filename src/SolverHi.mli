@@ -150,7 +150,7 @@ module Make
        [\Lambda vs.a1].
      - the value [a1] produced by the constraint [c1].
      - the value [a2] produced by the constraint [c2]. *)
-  val let1: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
+  val let1_gen: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
 
   val let1_mono: tevar -> variable option -> (variable -> 'a co) -> 'b co ->

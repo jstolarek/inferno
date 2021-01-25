@@ -300,7 +300,7 @@ let single xs =
 
 (* [let1] is a special case of [letn], where only one term variable is bound. *)
 
-let let1 x ty f1 c2 =
+let let1_gen x ty f1 c2 =
   letn CLetGen [ x, ty ] (fun vs -> f1 (single vs)) c2 <$$>
   fun (ss, generalizable, v1, v2) -> (single ss, generalizable, v1, v2)
 

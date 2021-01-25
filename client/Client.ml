@@ -328,7 +328,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
      (* Pick appropriate function for constructing let constraint *)
      let let1 = if value_restriction && not (is_gval t)
                 then let1_mono
-                else let1 in
+                else let1_gen in
 
      let1 x ty (hastype bound_env t) (hastype env u w) <$$>
        fun (t, a, t', u') ->
