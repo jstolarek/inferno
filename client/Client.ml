@@ -276,35 +276,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
       F.Var x
 
     (* Abstraction. *)
-  | ML.Abs (x, None, u) ->
-
-      (* We do not know a priori what the domain and codomain of this function
-         are, so we must infer them. We introduce two type variables to stand
-         for these unknowns. *)
-      exist (fun v1 ->
-        (* Here, we could use [exist_], because we do not need [ty2]. I refrain
-           from using it, just to simplify the paper. *)
-        exist (fun v2 ->
-          (* [w] must be the function type [v1 -> v2]. *)
-          (* Here, we could use [^^], instead of [^&], so as to avoid building
-             a useless pair. I refrain from using it, just to simplify the paper. *)
-          w --- arrow v1 v2 ^&
-          (* Under the assumption that [x] has type [domain], the term [u] must
-             have type [codomain]. *)
-          let1_mono x None false (fun v -> v -- v1) (hastype env u v2)
-
-        )
-      ) <$$> fun (ty1, (_ty2, ((), (_, _, (), u')))) ->
-      (* Once these constraints are solved, we obtain the translated function
-         body [u']. There remains to construct an explicitly-typed abstraction
-         in the target calculus. *)
-      F.Abs (x, ty1, u')
-
   | ML.Abs (x, ann, u) ->
 
      (* Construct an existential variable with structure defined by the type
         annotation. *)
-
       let ty = Inferno.Option.map (annotation_to_variable false env) ann in
 
       exist ?v:ty (fun v1 ->
