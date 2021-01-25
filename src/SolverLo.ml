@@ -290,7 +290,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
                       G.assert_variables_equal (G.quantifiers s)
                         (G.quantifiers annotation_scheme);
                       generalizable end in
-
                 (* When a type annotation is present we discard generalizable
                    variables from the generalization engine and use quantifiers
                    from the provided type signature. *)
@@ -299,12 +298,11 @@ let solve (rectypes : bool) (c : rawco) : unit =
             else
               begin
                 if (clet_type = CLetMono)
-                then List.iter U.monomorphize (G.unbound_tyvars s);
+                then List.iter U.monomorphize (G.unbound_tyvars s)
+                else List.iter U.unmonomorphize generalizable;
                 s :: ss, generalizable
-                end
+              end
           ) ss xvss ([], generalizable) in
-
-        if (clet_type = CLetGen) then List.iter U.unmonomorphize generalizable;
 
         Debug.print (string "Generalizable vars after signature check: "
                          ^^ print_vars generalizable);
