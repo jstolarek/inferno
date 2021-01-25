@@ -235,6 +235,8 @@ let solve (rectypes : bool) (c : rawco) : unit =
            but they also serve as named entry points. *)
         List.iter (G.register state) vs;
 
+        if (clet_type = CLetMono) then List.iter U.monomorphize vs;
+
         begin
           if ( List.length( xvss ) > 0 ) then
             Debug.print (nest 2
@@ -244,6 +246,9 @@ let solve (rectypes : bool) (c : rawco) : unit =
           else
             Debug.print_str "Entering top-level binding"
         end;
+        debug "Let binding type: " (if clet_type = CLetGen
+                                    then string "generalising"
+                                    else string "monomorphising");
         if Debug.hard then G.show_state "State before solving" state;
         (* Solve the constraint [c1]. *)
         solve env c1;
@@ -312,19 +317,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 s :: ss, generalizable
           ) ss xvss ([], generalizable) in
 
-        (* Technically, this step isn't necessary: We may as well leave quantified
-           type variables monomorphic, because we make them polymorphic when
-           instantiating them. This would be closer to what FreezeML does: In
-           FreezeML, quantifed type vars are collected in a type var env \Delta,
-           which makes them all monomorphic. This is not just a coincidence,
-           but the type inference algo utilizes this subtle fact.
-           But here, I just wanted to see if removing the monomorphism
-           constraint works.
-           Also, note that this is only possible here because all variables
-           in |generalizable| are indeed generalized.
-           If we had the value restriction, it would be crucial not to
-           un-monomorphize type variables that aren't generalized. *)
-        List.iter U.unmonomorphize generalizable;
+        if (clet_type = CLetGen) then List.iter U.unmonomorphize generalizable;
 
         Debug.print (string "Generalizable vars after signature check: "
                          ^^ print_vars generalizable);
