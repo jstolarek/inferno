@@ -324,46 +324,26 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
 
      let ty = Inferno.Option.map (annotation_to_variable true env) ann in
 
-     (* When value restriction is enabled and we let-bind a non-guarded
-        expression (either an application or a frozen variable) we treat this
-        binding as if it was a lambda abstraction.  In other words let
-        expression of the form:
+     (* Pick appropriate function for constructing let constraint *)
+     let let1 = if value_restriction && not (is_gval t)
+                then let1_mono
+                else let1 in
 
-          let x : ty = t in u
+     let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w) <$$>
+       fun (t, a, t', u') ->
+       (* [a] are the type variables that we must introduce (via
+          Lambda-abstractions) while type-checking [t']. [t] is a type of bound
+          terms.  Let us denote quantifiers of [t] as [b].  In FreezeML [a] is a
+          subset of [b].  Consider:
 
-        is treated as
+          let x = auto ~id in ...
 
-          (\x:ty. u) t
-
-        which means we generate constraints as if it was a combination of lambda
-        abstraction and application, but in the resulting System F term we
-        reconstruct a let binding.  *)
-     if value_restriction && not (is_gval t) then
-       begin
-         let1_mono x ty (is_gval t) (hastype bound_env t) (hastype env u w)
-         <$$>
-           fun (_, _, t', u') ->
-           F.Let (x, t', u')
-       end
-     else begin
-      (* Construct a ``let'' constraint. *)
-      let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
-      <$$> fun (t, a, t', u') ->
-           (* [a] are the type variables that we must introduce (via
-              Lambda-abstractions) while type-checking [t']. [t] is a type of
-              bound terms.  Let us denote quantifiers of [t] as [b].  In
-              FreezeML [a] is a subset of [b].  Consider:
-
-                let x = auto ~id in ...
-
-              There is no need to bind any type variables using
-              Lambda-abstraction in the body of bound term (therefore [a] is
-              empty) but [x] has the type scheme [forall a. a -> a], making [b]
-              non-empty.  When [a] is not empty its variables must appear in the
-              same order as they appear in [b]. *)
-
-           F.Let (x, F.ftyabs (align_order (==) (fst (O.to_scheme t)) a) t', u')
-      end
+          There is no need to bind any type variables using Lambda-abstraction
+          in the body of bound term (therefore [a] is empty) but [x] has the
+          type scheme [forall a. a -> a], making [b] non-empty.  When [a] is not
+          empty its variables must appear in the same order as they appear in
+          [b]. *)
+       F.Let (x, F.ftyabs (align_order (==) (fst (O.to_scheme t)) a) t', u')
 
     (* Pair. *)
   | ML.Pair (t1, t2) ->
