@@ -322,6 +322,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
 
+     (* Convert type annotation to an internal representation *)
      let ty = Inferno.Option.map (annotation_to_variable true env) ann in
 
      (* Pick appropriate function for constructing let constraint *)

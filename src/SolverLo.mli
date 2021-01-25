@@ -79,12 +79,6 @@ module Make
     (* JSTOLAREK: document this *)
   | CFrozen of tevar * variable
 
-    (* A trivial type scheme definition, [def x = v in C]. This binds [x] to
-       the monomorphic type scheme [v] in the constraint [C]. In other words,
-       an instantiation constraint [x w] will be satisfied by unifying [v] and
-       [w]. *)
-  | CDef of tevar * variable * rawco
-
     (* A nontrivial type scheme definition, [let [x, v, s?]* C1 in C2 [vs?]].
        In short, for each triple [x, v, s?] in the list, the term variable [x]
        is bound to the constraint abstraction [\v.C1], and the write-once
@@ -100,9 +94,6 @@ module Make
         * rawco
         * rawco
         * variable list WriteOnceRef.t
-
-  | PMono of tevar * variable
-  | PMonoInst of tevar * variable
 
   (* ---------------------------------------------------------------------- *)
 

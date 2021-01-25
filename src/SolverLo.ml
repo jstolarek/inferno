@@ -97,16 +97,12 @@ type rawco =
   | CExist of variable * rawco
   | CInstance of tevar * variable * variable list WriteOnceRef.t
   | CFrozen   of tevar * variable
-  | CDef of tevar * variable * rawco
   | CLet of clet_type
         * (tevar * variable * bool * ischeme WriteOnceRef.t) list
         * variable list (* Proxy variables *)
         * rawco         (* Bound term *)
         * rawco         (* Let body *)
         * variable list WriteOnceRef.t
-  (* Predicates *)
-  | PMono of tevar * variable
-  | PMonoInst of tevar * variable
 
 (* -------------------------------------------------------------------------- *)
 
@@ -213,19 +209,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
         U.unify v w;
         List.iter U.unskolemize qs;
         debug_unify_after v
-    | CDef (x, v, c) ->
-       G.register_signatures state v;
-       let scheme = G.scheme v in
-       Debug.print (
-           string "Adding binder " ^^ dquote ^^ (print_tevar x) ^^
-           dquote ^^ string " with type scheme " ^^ print_scheme scheme);
-       solve (XMap.add x scheme env) c;
-       Debug.print (
-           string "Type scheme on binder " ^^ dquote ^^ (print_tevar x) ^^
-             dquote ^^ string " after solving constraint in scope: " ^^
-             print_scheme scheme);
-       assert (G.all_generic_vars_bound scheme);
-       Debug.print (string "Exiting scope of binding " ^^ print_tevar x)
     | CLet (clet_type, xvss, vs, c1, c2, generalizable_hook) ->
         (* Warn the generalization engine that we entering the left-hand side of
            a [let] construct. *)
@@ -389,19 +372,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
           Debug.print_str "Typechecking of top-level binding finished";
         (* Proceed to solve [c2] in the extended environment. *)
         solve env c2
-
-    | PMono (x, v) ->
-       U.monomorphize v;
-       Debug.print ( string "Imposed monomorphic constraint on variable "
-                  ^^ print_tevar x
-                  ^^ string ", represented by type variable " ^^ print_var v)
-
-    | PMonoInst (x, v) ->
-       List.iter (U.monomorphize) (G.unbound_tyvars (G.scheme v));
-       Debug.print ( string "Imposed monomorphic instantiation constraint on variable "
-                  ^^ print_tevar x
-                  ^^ string ", represented by type variable " ^^ print_var v)
-
 
   in
   solve XMap.empty c

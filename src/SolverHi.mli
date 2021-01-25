@@ -139,14 +139,6 @@ module Make
 
   (* Construction of constraint abstractions, a.k.a. generalization. *)
 
-  (* [def x v c] binds the term variable [x] to the trivial (monomorphic) type
-     scheme [v] in the constraint [c]. *)
-  val def: tevar -> variable -> 'a co -> 'a co
-
-  val mono: tevar -> variable -> unit co
-
-  val mono_inst: tevar -> variable -> unit co
-
   (* [let1 x c1 c2] binds the term variable [x] to the constraint abstraction
      [c1] in the constraint [c2]. (Technically, [c1] is a function of a fresh
      type variable to a constraint, as in [exist].) The resulting constraint
