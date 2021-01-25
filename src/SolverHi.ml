@@ -156,9 +156,7 @@ let annotation_to_variable (generic_qs : bool) (env : int list) (t : O.ty) :
 (* Existential quantification. *)
 
 (* BEGIN EXIST *)
-let exist f =
-  (* Create a fresh unifier variable [v]. *)
-  let v = fresh None in
+let exist ?(v=fresh None) f =
   (* Pass [v] to the client. *)
   let rc, k = f v in
   (* Wrap the constraint [c] in an existential quantifier, *)
@@ -176,13 +174,6 @@ let exist f =
 
 let construct t f =
   let v = fresh (Some t) in
-  let rc, k = f v in
-  CExist (v, rc),
-  fun env ->
-    let decode = env in
-    (decode v, k env)
-
-let exists_sig v f =
   let rc, k = f v in
   CExist (v, rc),
   fun env ->

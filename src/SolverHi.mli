@@ -95,15 +95,13 @@ module Make
      in an existential quantifier for [v]. This results in a constraint of type
      [ty * 'a], where the left-hand component of the pair, a decoded type, is
      the witness for [v]. *)
-  val exist:                            (variable -> 'a co) -> (ty * 'a) co
+  val exist: ?v:variable -> (variable -> 'a co) -> (ty * 'a) co
 
   (* END HI *)
   (* [construct t c] is analogous to [exist c], but additionally constrains
      the type variable [v] to be equal to the type [t]. So, it is really a
      way of constructing a variable that stands for a shallow term. *)
   val construct:  variable structure -> (variable -> 'a co) -> (ty * 'a) co
-
-  val exists_sig: variable -> (variable -> 'a co) -> (ty * 'a) co
 
   (* ---------------------------------------------------------------------- *)
 

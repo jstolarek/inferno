@@ -300,14 +300,14 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
          in the target calculus. *)
       F.Abs (x, ty1, u')
 
-  | ML.Abs (x, Some ty, u) ->
+  | ML.Abs (x, ann, u) ->
 
      (* Construct an existential variable with structure defined by the type
         annotation. *)
 
-      let ann = annotation_to_variable false env ty in
+      let ty = Inferno.Option.map (annotation_to_variable false env) ann in
 
-      exists_sig ann (fun v1 ->
+      exist ?v:ty (fun v1 ->
 
         (* Here, we could use [exist_], because we do not need [ty2]. I refrain
            from using it, just to simplify the paper. *)
@@ -319,7 +319,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
           w --- arrow v1 v2 ^&
           (* Under the assumption that [x] has type [domain], the term [u] must
              have type [codomain]. *)
-            let1_mono x (Some ann) false (fun v -> v -- v1) (hastype env u v2)
+            let1_mono x ty false (fun v -> v -- v1) (hastype env u v2)
         )
       ) <$$> fun (ty1, (_ty2, ((), (_, _, (), u')))) ->
         (* Once these constraints are solved, we obtain the translated function
@@ -381,7 +381,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                registered with the generalisation engine before being used.
                Registration is carried out by `def`, hence it is important it
                comes first. *)
-            exists_sig (annotation_to_variable false env ty) (fun v1 ->
+            exist ?v:(Some (annotation_to_variable false env ty)) (fun v1 ->
                     def x v1 (hastype env u w) ^&
                       hastype bound_env t v1
               ) <$$>
