@@ -322,6 +322,8 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
 
+     let ty = Inferno.Option.map (annotation_to_variable true env) ann in
+
      (* When value restriction is enabled and we let-bind a non-guarded
         expression (either an application or a frozen variable) we treat this
         binding as if it was a lambda abstraction.  In other words let
@@ -338,36 +340,13 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
         reconstruct a let binding.  *)
      if value_restriction && not (is_gval t) then
        begin
-         match ann with
-         | None ->
-               (*exist (fun v1 ->*)
-                   let1_mono x None false (hastype env t) (hastype env u w)
-
-(*
-                   hastype env t v1 ^&
-                   (* order of constraints important here! *)
-                   mono_inst x v1 ^&
-                   def x v1 (hastype env u w)
-*)
-             <$$>
-                 fun (_, _, t', u') ->
-                 F.Let (x, t', u')
-         | Some ty ->
-            (* This implements C-LetAscribe constraint generation rule.
-               Compared to the paper the conjuncts order is reversed.  This is
-               crucial!  Existential v1 is equipped with a structure that comes
-               from a signature, and that structure needs to be properly
-               registered with the generalisation engine before being used.
-               Registration is carried out by `def`, hence it is important it
-               comes first. *)
-            let1_mono x (Some (annotation_to_variable true env ty)) false (hastype bound_env t) (hastype env u w)
-             <$$>
-                 fun (_, _, t', u') ->
-                 F.Let (x, t', u')
+         let1_mono x ty (is_gval t) (hastype bound_env t) (hastype env u w)
+         <$$>
+           fun (_, _, t', u') ->
+           F.Let (x, t', u')
        end
      else begin
       (* Construct a ``let'' constraint. *)
-      let ty = Inferno.Option.map (annotation_to_variable true env) ann in
       let1 x ty (is_gval t) (hastype bound_env t) (hastype env u w)
       <$$> fun (t, a, t', u') ->
            (* [a] are the type variables that we must introduce (via
