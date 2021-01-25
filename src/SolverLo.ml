@@ -298,7 +298,11 @@ let solve (rectypes : bool) (c : rawco) : unit =
             else
               begin
                 if (clet_type = CLetMono)
-                then List.iter U.monomorphize (G.unbound_tyvars s)
+                then
+                  begin
+                    List.iter U.monomorphize (G.unbound_tyvars s);
+                    List.iter U.monomorphize (G.quantifiers    s)
+                  end
                 else List.iter U.unmonomorphize generalizable;
                 s :: ss, generalizable
               end

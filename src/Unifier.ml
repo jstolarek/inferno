@@ -105,7 +105,7 @@ let is_skolem v =
 
 let skolemize v =
   let descriptor = TUnionFind.find v in
-  assert (not (descriptor.monomorphic));
+  (* assert (not (descriptor.monomorphic)); *)
   descriptor.skolem <- true
 
 let unskolemize v =

@@ -1809,7 +1809,7 @@ let fml_scoped_tyvars_1 =
   { name = "scoped_tyvars_1"
   ; term = (fml_id_int)
            (ML.Let ( "x"
-                  , Some (TyForall (1, TyArrow(TyArrow(TyVar 1, TyVar 1),TyArrow(TyVar 1, TyVar 1))))
+                  , Some (TyForall (1, TyArrow( TyArrow (TyVar 1, TyVar 1),TyArrow(TyVar 1, TyVar 1))))
                   , ML.Let ( "y"
                            , Some (TyArrow (TyVar 1, TyVar 1))
                            , abs "w" w
