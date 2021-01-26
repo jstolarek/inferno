@@ -269,7 +269,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 Debug.print (nest 2
                   ((if clet_type = CLetGen
                     then string "Generalizable let-binder "
-                    else string "Let-binder ") ^^
+                    else string "Monomorphising let-binder ") ^^
                    string "with type annotation:" ^^ hardline ^^
                    string "Annotation: " ^^ print_var annotation ^^ hardline ^^
                    string "Inferred  : " ^^ print_scheme s) );
@@ -297,11 +297,25 @@ let solve (rectypes : bool) (c : rawco) : unit =
               end
             else
               begin
+                Debug.print (nest 2
+                  ((if clet_type = CLetGen
+                    then string "Generalizable let-binder "
+                    else string "Monomorphising let-binder ") ^^
+                   string "without type annotation:" ^^ hardline ^^
+                   string "Inferred type : " ^^ print_scheme s) );
                 if (clet_type = CLetMono)
                 then
                   begin
-                    List.iter U.monomorphize (G.unbound_tyvars s);
-                    List.iter U.monomorphize (G.quantifiers    s)
+                    let ftvs        = G.unbound_tyvars s in
+                    let quantifiers = G.quantifiers s in
+                    Debug.print (string "Monomorphising unbound type variables "
+                              ^^ print_vars ftvs ^^ string " of scheme "
+                              ^^ print_scheme s);
+                    List.iter U.monomorphize ftvs;
+                    Debug.print (string "Monomorphising quantifiers "
+                              ^^ print_vars quantifiers ^^ string " of scheme "
+                              ^^ print_scheme s);
+                    List.iter U.monomorphize quantifiers
                   end
                 else List.iter U.unmonomorphize generalizable;
                 s :: ss, generalizable
