@@ -150,6 +150,9 @@ let quantifiers { quantifiers; _ } =
 let body { body; _ } =
   body
 
+let make_scheme quantifiers body =
+  { quantifiers; body }
+
 let has_quantifiers { quantifiers; _ } =
   List.length quantifiers > 0
 

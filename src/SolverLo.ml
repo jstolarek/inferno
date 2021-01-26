@@ -306,18 +306,25 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 if (clet_type = CLetMono)
                 then
                   begin
-                    let ftvs        = G.unbound_tyvars s in
-                    let quantifiers = G.quantifiers s in
+                    Debug.print (string "Monomorphising generalizable variables "
+                              ^^ print_vars generalizable
+                              ^^ string " of scheme " ^^ print_scheme s);
+                    List.iter U.monomorphize generalizable;
+
+                    let ftvs = G.unbound_tyvars s in
                     Debug.print (string "Monomorphising unbound type variables "
                               ^^ print_vars ftvs ^^ string " of scheme "
                               ^^ print_scheme s);
-                    List.iter U.monomorphize ftvs;
-                    Debug.print (string "Monomorphising quantifiers "
-                              ^^ print_vars quantifiers ^^ string " of scheme "
-                              ^^ print_scheme s);
-                    List.iter U.monomorphize quantifiers
+                    List.iter U.monomorphize ftvs
                   end
                 else List.iter U.unmonomorphize generalizable;
+
+                let s, generalizable =
+                  if clet_type = CLetMono
+                  then G.make_scheme (Utility.diff (G.quantifiers s) generalizable)
+                                     (G.body s), []
+                  else s, generalizable in
+
                 s :: ss, generalizable
               end
           ) ss xvss ([], generalizable) in
