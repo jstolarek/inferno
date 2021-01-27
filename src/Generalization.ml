@@ -351,7 +351,11 @@ let assert_variables_equal (xs : U.variable list) (ys : U.variable list) =
 (* Debugging utilities. *)
 
 let show_variable v =
-  Printf.printf "id = %d, rank = %d\n" (U.id v) (U.rank v); flush stdout
+  Printf.printf "id = %d, rank = %d" (U.id v) (U.rank v);
+  if (U.is_monomorphic v) then Printf.printf ", mono";
+  if (U.is_skolem v) then Printf.printf ", skolem";
+  Printf.printf "\n";
+  flush stdout
 
 let show_pool state k =
   Printf.printf "Pool %d:\n" k;
