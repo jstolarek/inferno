@@ -212,6 +212,9 @@ let solve (rectypes : bool) (c : rawco) : unit =
         List.iter U.unskolemize qs;
         debug_unify_after v
     | CLet (clet_type, xvss, vs, c1, c2, generalizable_hook) ->
+         let generalizing_let = clet_type = CLetGen in
+         let mono_let = clet_type = CLetMono in
+
         (* Warn the generalization engine that we entering the left-hand side of
            a [let] construct. *)
         G.enter state;
@@ -284,12 +287,15 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 debug_unify_after (G.body annotation_scheme);
                 List.iter U.unskolemize (G.quantifiers annotation_scheme);
                 let generalizable =
-                  if clet_type = CLetGen
+                  if generalizing_let
                   then G.quantifiers annotation_scheme
-                  else begin
+                  else
+                    begin
                       G.assert_variables_equal (G.quantifiers s)
                         (G.quantifiers annotation_scheme);
-                      generalizable end in
+                      assert (generalizable = []);
+                      []
+                    end in
                 (* When a type annotation is present we discard generalizable
                    variables from the generalization engine and use quantifiers
                    from the provided type signature. *)
@@ -298,12 +304,12 @@ let solve (rectypes : bool) (c : rawco) : unit =
             else
               begin
                 Debug.print (nest 2
-                  ((if clet_type = CLetGen
+                  ((if generalizing_let
                     then string "Generalizable let-binder "
                     else string "Monomorphising let-binder ") ^^
                    string "without type annotation:" ^^ hardline ^^
                    string "Inferred type : " ^^ print_scheme s) );
-                if (clet_type = CLetMono)
+                if mono_let
                 then
                   begin
                     let ftvs        = G.unbound_tyvars s in
