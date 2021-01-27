@@ -277,8 +277,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
                    string "Inferred  : " ^^ print_scheme s) );
                 let annotation_scheme = G.scheme annotation in
                 List.iter U.skolemize (G.quantifiers annotation_scheme);
-                if (clet_type = CLetMono)
-                then List.iter U.monomorphize (G.quantifiers s);
                 debug_unify_before
                   (string "Unifying let annotation with inferred type of let body.")
                   (G.body annotation_scheme) (G.body s);
