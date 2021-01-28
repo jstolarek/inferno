@@ -937,7 +937,7 @@ let bad4 =
                     ML.let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
   ; typ  = None
-  ; vres = false
+  ; vres = true
   }
 
 (* term               : λ(bot : ∀ a. a). let f = bot bot in (f 1, poly ~f)
@@ -950,7 +950,7 @@ let bad4_no_value_restriction =
                     ML.let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
   ; typ  = None
-  ; vres = true
+  ; vres = false
   }
 
 (* example            : bad5
