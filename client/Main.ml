@@ -1443,6 +1443,42 @@ let fml_quantifier_ordering_2 =
   }
 
 (*
+   term : let pair' : ∀ b a. a → b → (a × b) = ~pair in pair'
+   type : X
+*)
+let fml_quantifier_ordering_3 =
+  { name = "quantifier_ordering_3"
+  ; term = (fml_pair)
+           (ML.Let ( "pair'"
+                    , Some (TyForall (2, TyForall (1,
+                                     TyArrow (TyVar 1, TyArrow (TyVar 2,
+                                     TyProduct (TyVar 1, TyVar 2))))))
+                    , frozen "pair"
+                    , var "pair'"))
+  ; typ  = None
+  ; vres = true
+  }
+
+(*
+   term : let pair' : ∀ b a. a → b → (a × b) = pair in ~pair'
+   type : ∀ b a. a → b → (a × b)
+*)
+let fml_quantifier_ordering_4 =
+  { name = "quantifier_ordering_4"
+  ; term = (fml_pair)
+           (ML.Let ( "pair'"
+                    , Some (TyForall (2, TyForall (1,
+                                     TyArrow (TyVar 1, TyArrow (TyVar 2,
+                                     TyProduct (TyVar 1, TyVar 2))))))
+                    , var "pair"
+                    , frozen "pair'"))
+  ; typ  = Some (TyForall ((), TyForall ((),
+                                     TyArrow (TyVar 0, TyArrow (TyVar 1,
+                                     TyProduct (TyVar 0, TyVar 1))))))
+  ; vres = true
+  }
+
+(*
    term : let (x : (∀ a. a → a) → Int) = λ(f : ∀ a. a → a). f 1 in 1
    type : Int
    bugs : #2
@@ -1977,6 +2013,8 @@ let () =
 
   test fml_quantifier_ordering_1;
   test fml_quantifier_ordering_2;
+  test fml_quantifier_ordering_3;
+  test fml_quantifier_ordering_4;
 
   test fml_type_annotations_1;
   test fml_id_appl;
