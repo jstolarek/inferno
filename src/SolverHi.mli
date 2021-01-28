@@ -160,7 +160,8 @@ module Make
   (* [let0 c] has the same meaning as [c], but, like [let1], produces a list [vs]
      of the type variables that may appear in the result of [c]. The argument of
      [run] should always be an application of [let0] -- see below. *)
-  val let0: 'a co  -> (tyvar list * 'a) co
+  val let0_gen: 'a co  -> (tyvar list * 'a) co
+  val let0_mono: 'a co  -> (tyvar list * 'a) co
 
   (* [letn xs c1 c2] binds [n] term variables [xs] to [n] constraint abstractions
      in the constaint [c2]. Here, [c1] is a function of [n] fresh type variables

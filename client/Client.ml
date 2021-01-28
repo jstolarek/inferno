@@ -382,6 +382,9 @@ exception Cycle = Solver.Cycle
 exception MismatchedQuantifiers = Solver.MismatchedQuantifiers
 
 let translate (value_restriction : bool) (t : ML.term) : F.nominal_term =
+  let let0 = if value_restriction && not (is_gval t)
+             then let0_mono
+             else let0_gen in
   solve false (
     let0 (exist_ (hastype value_restriction [] t)) <$$> fun (vs, t) ->
     (* [vs] are the binders that we must introduce *)

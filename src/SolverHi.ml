@@ -312,8 +312,12 @@ let let1_mono x ty f1 c2 =
    the right-hand side is [CTrue]. We require using this form at the toplevel
    of every constraint. *)
 
-let let0 c1 =
+let let0_gen c1 =
   letn CLetGen [] (fun _ -> c1) (pure ()) <$$>
+  fun (_, generalizable, v1, ()) -> (generalizable, v1)
+
+let let0_mono c1 =
+  letn CLetMono [] (fun _ -> c1) (pure ()) <$$>
   fun (_, generalizable, v1, ()) -> (generalizable, v1)
 
 (* -------------------------------------------------------------------------- *)
