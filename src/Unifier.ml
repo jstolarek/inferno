@@ -152,6 +152,12 @@ let print (fuel : int) f v =
     else
       empty
   end ^^
+  begin
+    if ( Debug.hard && TUnionFind.is_representative v ) then
+      comma ^^ space ^^ string "repr"
+    else
+      empty
+  end ^^
   rbrace
   end
   else
