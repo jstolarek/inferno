@@ -1368,7 +1368,7 @@ let fml_let_annot_9_no_annot =
    term: let f : ∀a b. a → b → b =
            let g : ∀ b. a → b → b = λy.λz.z in id ~g
          in f
-   type: ∀a b. a → b → b
+   type: None
    bug: #31
 *)
 let fml_let_annot_10 =
@@ -1382,7 +1382,7 @@ let fml_let_annot_10 =
                             , app id (frozen "g")
                             )
                    , f))
-  ; typ  = Some (TyForall ((), TyForall ((), TyArrow (TyArrow (TyVar 1, TyVar 0), TyVar 0))))
+  ; typ  = None
   ; vres = true
   }
 
