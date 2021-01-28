@@ -559,7 +559,11 @@ let exit rectypes state roots =
 
   let vs =
     List.filter (fun v ->
-      U.is_representative v && begin
+      begin
+        if U.rank v = generic then
+          (* A copy of this variable already visited, discard *)
+          false
+        else
         if U.rank v < state.young then begin
           register_at_rank state v;
           false
