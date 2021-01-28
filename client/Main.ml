@@ -1950,6 +1950,19 @@ let fml_value_restriction_2 =
   ; vres = true
   }
 
+(*
+   term : let f = id id in poly ~f
+   type : X
+   bug  : #35
+*)
+let fml_value_restriction_3 =
+  { name = "fml_value_restriction_3"
+  ; term = (fml_id << fml_poly)
+           (ML.let_ ("f", (app id id), app poly (frozen "f")))
+  ; typ  = None
+  ; vres = true
+  }
+
 
 let () =
   test env_test;
@@ -2067,6 +2080,7 @@ let () =
   test fml_free_unification_vars_2;
 
   test fml_value_restriction_1;
-  test fml_value_restriction_2
+  test fml_value_restriction_2;
+  known_broken_test fml_value_restriction_3
 
 let () = print_summary_and_exit ()
