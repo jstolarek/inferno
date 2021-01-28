@@ -1935,6 +1935,21 @@ let fml_value_restriction_1 =
   ; vres = true
   }
 
+(*
+   term : let f = let g = 1
+                  in id id
+          in f ~id
+   type : X
+   bug  : #27
+*)
+let fml_value_restriction_2 =
+  { name = "fml_value_restriction_2"
+  ; term = (fml_id)
+           (ML.let_ ("f", ML.let_ ("g", one, (app id id)), app f (frozen "id")))
+  ; typ  = None
+  ; vres = true
+  }
+
 
 let () =
   test env_test;
@@ -2051,6 +2066,7 @@ let () =
   test fml_free_unification_vars_1;
   test fml_free_unification_vars_2;
 
-  test fml_value_restriction_1
+  test fml_value_restriction_1;
+  test fml_value_restriction_2
 
 let () = print_summary_and_exit ()

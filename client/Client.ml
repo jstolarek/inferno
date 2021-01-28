@@ -226,8 +226,9 @@ let product_i i x y =
   else
     product y x
 
-let is_gval = function
+let rec is_gval = function
   | ML.App _ | ML.FrozenVar _ -> false
+  | ML.Let (_, _, _, t)       -> is_gval t
   | _                         -> true
 
 (* Ensures that all elements of xs appearing in ys appear at the front and in
