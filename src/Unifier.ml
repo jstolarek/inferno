@@ -255,7 +255,8 @@ and monomorphize_variable visited v =
     if desc.skolem then
       (* nothing to do, skolems are never monomorphic *)
       ()
-    else
+    else if desc.structure = None then
+      (* Only monomorphise variables without a structure *)
       desc.monomorphic <- true;
     VarMap.add visited v ();
     monomorphize_structure visited desc.structure
@@ -327,6 +328,8 @@ and unify_descriptors t desc1 desc2 =
          (* Propagate the monomorphism to all type vars used on the
           structure, if it exists. *)
          monomorphize_structure (VarMap.create 128) new_desc.structure;
+       (* Don't keep monomorphic restriction on variables with a structure *)
+       if new_desc.structure != None then new_desc.monomorphic <- false;
        new_desc
 
 
