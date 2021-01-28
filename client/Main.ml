@@ -1130,7 +1130,7 @@ let fml_nested_forall_inst_1 =
    term : let (f : (∀ a. (∀ b. b → b) → a → a) → (∀ a. (∀ b. b → b) → a → a)) = id in
           let g = f $auto' in
           g ~id
-   type : ∀ a. a → a
+   type : [∀ a.] a → a
 *)
 let fml_nested_forall_inst_2 =
   { name = "nested_forall_inst_2"
@@ -1150,7 +1150,7 @@ let fml_nested_forall_inst_2 =
    term : let (f : ∀ a. ((∀ b. b → b) → a → a) → ((∀ b. b → b) → a → a)) = id in
           let g = f (id auto') in
           g ~id
-   type : ∀ a. a → a
+   type : [∀ a.] a → a
 *)
 let fml_nested_forall_inst_3 =
   { name = "nested_forall_inst_3"
