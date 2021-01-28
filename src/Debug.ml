@@ -1,6 +1,7 @@
 let enabled     = false
 let hard        = true
 let print_ranks = true
+let print_repr  = false
 let fuel        = 8
 
 let print_str message =

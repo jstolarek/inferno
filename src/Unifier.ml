@@ -153,7 +153,7 @@ let print (fuel : int) f v =
       empty
   end ^^
   begin
-    if ( Debug.hard && TUnionFind.is_representative v ) then
+    if ( Debug.print_repr && TUnionFind.is_representative v ) then
       comma ^^ space ^^ string "repr"
     else
       empty
