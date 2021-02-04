@@ -1042,6 +1042,22 @@ let fml_inst_2 =
   }
 
 (*
+   term : let f : ∀a.((a → a) → Int) = λx.1
+          in (λx.f x) id
+   type : [∀ a.] Int
+*)
+let fml_inst_3 =
+  { name = "inst_3"
+  ; term = (fml_id)
+           (ML.Let ( "f"
+                   , Some (TyForall (1, TyArrow (TyArrow( TyVar 1, TyVar 1), TyInt)))
+                   , abs "x" one
+                   , app (abs "x" (app f x)) id))
+  ; typ  = Some (TyForall ((), TyInt))
+  ; vres = true
+  }
+
+(*
    term : let id_int : Int → Int = λx.x in id_int 1
    type : Int
 *)
@@ -2009,6 +2025,7 @@ let () =
   test fml_const_false;
   test fml_inst_1;
   test fml_inst_2;
+  test fml_inst_3;
   test fml_inst_sig_1;
   test fml_inst_sig_2;
   test fml_id_app;
