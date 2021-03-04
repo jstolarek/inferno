@@ -122,6 +122,12 @@ exception UnifyMono = U.UnifyMono
 exception Cycle = U.Cycle
 exception MismatchedQuantifiers = G.MismatchedQuantifiers
 
+type state = G.state
+
+let state = G.init ()
+
+let get_state () = state
+
 let solve (rectypes : bool) (c : rawco) : unit =
 
   (* Initialize the generalization engine. It has mutable state, so [state]
@@ -149,8 +155,6 @@ let solve (rectypes : bool) (c : rawco) : unit =
           hardline ^^
           print_var v) in
     Debug.print message in
-
-  let state = G.init() in
 
   (* The recursive function [solve] is parameterized with an environment
      that maps term variables to type schemes. *)
@@ -212,8 +216,8 @@ let solve (rectypes : bool) (c : rawco) : unit =
         List.iter U.unskolemize qs;
         debug_unify_after v
     | CLet (clet_type, xvss, vs, c1, c2, generalizable_hook) ->
-         let generalizing_let = clet_type = CLetGen in
-         let mono_let = clet_type = CLetMono in
+         let generalizing_let = clet_type = CLetGen  in
+         let mono_let         = clet_type = CLetMono in
 
         (* Warn the generalization engine that we entering the left-hand side of
            a [let] construct. *)

@@ -110,6 +110,11 @@ module Make
   exception UnifyMono
   exception Cycle of variable
   exception MismatchedQuantifiers of variable list * variable list
+
+  type state
+
+  val get_state : unit -> state
+
   val solve: bool -> rawco -> unit
 
   (* ---------------------------------------------------------------------- *)
