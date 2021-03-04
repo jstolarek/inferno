@@ -69,7 +69,7 @@ module S = struct
         f t2 u2
     | TyForall (qs1, t1), TyForall (qs2, t2) ->
        if (List.length qs1 != List.length qs2) then raise Iter2;
-       (* S-Decompose-Forall *)
+       let ss = List.map (fun _ -> fresh_reg_skolem ()) qs1 in
        List.iter2 f qs1 qs2;
         f t1 t2
     | TyInt, TyInt -> ()

@@ -59,6 +59,8 @@ type 'a co =
   rawco * (env -> 'a)
 (* END CO *)
 
+let fresh_reg_skolem () = Lo.fresh_reg_skolem ()
+
 (* -------------------------------------------------------------------------- *)
 
 (* The type ['a co] forms an applicative functor. *)

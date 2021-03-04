@@ -47,6 +47,13 @@ module G =
 type ischeme =
     G.scheme
 
+(* JSTOLAREK: perhaps this can be hidden? *)
+type state = G.state
+
+let state = G.init ()
+
+let get_state () = state
+
 (* -------------------------------------------------------------------------- *)
 
 (* Creation of fresh variables. *)
@@ -56,6 +63,12 @@ let fresh t =
 
 let fresh_generic t =
   U.fresh t G.generic
+
+let fresh_reg_skolem () =
+  let v = U.fresh None G.no_rank in
+  G.register (get_state ()) v;
+  U.skolemize v;
+  v
 
 (* -------------------------------------------------------------------------- *)
 
@@ -121,12 +134,6 @@ exception UnifySkolem = U.UnifySkolem
 exception UnifyMono = U.UnifyMono
 exception Cycle = U.Cycle
 exception MismatchedQuantifiers = G.MismatchedQuantifiers
-
-type state = G.state
-
-let state = G.init ()
-
-let get_state () = state
 
 let solve (rectypes : bool) (c : rawco) : unit =
 

@@ -45,6 +45,8 @@ module Make
   (* [fresh_generic t] creates a fresh generic (quantified) variable. *)
   val fresh_generic: variable structure option -> variable
 
+  val fresh_reg_skolem : unit -> variable
+
   (* The type [ischeme] describes the solver's type schemes. *)
 
   type ischeme

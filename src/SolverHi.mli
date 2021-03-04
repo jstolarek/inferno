@@ -44,6 +44,8 @@ module Make
 
   type 'a co
 
+  val fresh_reg_skolem : unit -> variable
+
   (* ---------------------------------------------------------------------- *)
 
   (* The applicative functor interface: tautology, conjunction, post-processing. *)
