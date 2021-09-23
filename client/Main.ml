@@ -1113,13 +1113,13 @@ let fml_quantifier_placement_1 =
 
 (*
    term : let f = (λx.1) in ~f
-   type : [∀ a.] a → Int
+   type : ∀ a. a → Int
 *)
 let fml_quantifier_placement_2 =
   { name = "quantifier_placement_2"
   ; term = ML.let_ ("f",
                     abs "x" one,
-                    var "f")
+                    frozen "f")
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyInt)))
   ; vres = true
   }
@@ -1491,6 +1491,19 @@ let fml_quantifier_ordering_4 =
   ; typ  = Some (TyForall ((), TyForall ((),
                                      TyArrow (TyVar 0, TyArrow (TyVar 1,
                                      TyProduct (TyVar 0, TyVar 1))))))
+  ; vres = true
+  }
+
+(*
+   term : let f = (λx.1) (λy.y) in ~f
+   type : ∀ a. Int
+*)
+let fml_redundant_quantifiers_1 =
+  { name = "quantifier_placement_3"
+  ; term = ML.let_ ("f",
+                    app (abs "x" one) (abs "y" y),
+                    frozen "f")
+  ; typ  = Some (TyForall ((), TyInt))
   ; vres = true
   }
 
@@ -2060,6 +2073,8 @@ let () =
   test fml_quantifier_ordering_2;
   test fml_quantifier_ordering_3;
   test fml_quantifier_ordering_4;
+
+  test fml_redundant_quantifiers_1;
 
   test fml_type_annotations_1;
   test fml_id_appl;
