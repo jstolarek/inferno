@@ -22,7 +22,6 @@ type clet_type =
 (* This signature is isomorphic to [Map.OrderedType] in OCaml's standard
    library. *)
 
-(* BEGIN TEVAR *)
 module type TEVAR = sig
 
   (* The type of term variables. *)
@@ -33,17 +32,13 @@ module type TEVAR = sig
 
   val print_tevar : tevar -> PPrint.document
 
-(* END *)
 end
-(* END TEVAR *)
 
 (* -------------------------------------------------------------------------- *)
 
 (* The structure of types *after decoding* is described to the solver as
    follows. *)
 
-
-(* BEGIN OUTPUT *)
 module type OUTPUT = sig
 
   (* The solver represents type variables via unique integer identifiers. *)
@@ -64,8 +59,10 @@ module type OUTPUT = sig
      type. In other words, [variable] is an injection of [tyvar] into [ty]. *)
   val variable: tyvar -> ty
 
+  (* [forall] quantifies a decoded type. *)
   val forall: tyvar list -> ty -> ty
 
+  (* Splits a quantfied type into quantifiers and body. *)
   val to_scheme : ty -> tyvar list * ty
 
   (* [structure t] turns [t], an application of type constructor to children
@@ -74,6 +71,13 @@ module type OUTPUT = sig
      of the functor [\X. tyvar + t X]. *)
   val structure: ty structure -> ty
 
+  (* A worker function required by SolverHi.annotation_to_variable.  Used for
+     converting type signatures in the source code to unification variables with
+     a structure.  [to_variable] takes two functions for generating fresh
+     unification variables.  First one always generates unregistered variables.
+     Second one generates generic or unregistered variables, depending on
+     whether the variables are under a quantifier or no.  See comments in
+     SolverHi.annotation_to_variable for more details. *)
   val to_variable : ('a structure -> 'a) -> ('a structure -> 'a) -> (ty -> 'a)
                  -> 'a TyVarMap.t -> ty -> 'a
 
@@ -85,6 +89,4 @@ module type OUTPUT = sig
      and one may wish to decode and display them. *)
   val mu: tyvar -> ty -> ty
 
-(* END *)
 end
-(* END OUTPUT *)

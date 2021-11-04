@@ -11,6 +11,7 @@ module S = struct
     | TyArrow of 'a * 'a
     | TyProduct of 'a * 'a
     | TyForall of 'a list * 'a
+    (* Arbitrary ground types to allow writing concrete examples *)
     | TyInt
     | TyBool
 
@@ -68,24 +69,29 @@ module S = struct
         f t1 u1;
         f t2 u2
     | TyForall (qs1, t1), TyForall (qs2, t2) ->
+       (* We demand that iterated quantified types have the same number of
+          quantifiers.  To achieve this it is crucial that nested quantifiers
+          are flattened when necessary -- see Generalize.flatten_outer_foralls.
+        *)
        if (List.length qs1 != List.length qs2) then raise Iter2;
-       (* S-Decompose-Forall *)
        List.iter2 f qs1 qs2;
-        f t1 t2
+       f t1 t2
     | TyInt, TyInt -> ()
     | TyBool, TyBool -> ()
     | _, _ ->
         raise Iter2
 
+  (* Pretty printer for client types (structure of types).  It is mutually
+     recursive with printer for type variables.  Cf. SolverLo.print_var  *)
   let print fuel f s =
     let open PPrint in
     match s with
-    | TyArrow   (t1, t2) ->
+    | TyArrow (t1, t2) ->
        parens (f fuel t1 ^^ space ^^ string "->" ^^ space ^^ f fuel t2)
     | TyProduct (t1, t2) ->
        parens (f fuel t1 ^^ string "×" ^^ f fuel t2)
-    | TyForall  ([],  t) -> f fuel t
-    | TyForall  (qs,  t) ->
+    | TyForall ([],  t) -> f fuel t
+    | TyForall (qs,  t) ->
        string "forall " ^^ lbracket ^^
        separate (comma ^^ space) (List.map (fun q -> f fuel q) qs) ^^
        rbracket ^^
@@ -117,15 +123,15 @@ module O = struct
   let variable x =
     F.TyVar x
 
-  let forall qs body = match qs with
-    | [] -> body
-    | _  -> List.fold_right (fun q t -> F.TyForall (q, t)) qs body
+  (* Creates one F.TyForall per quantifier.  If no quantifiers are given returns
+     unmodified body. *)
+  let forall qs body = List.fold_right (fun q t -> F.TyForall (q, t)) qs body
 
-  let rec to_scheme = function
-    | F.TyForall (q, body) ->
-       let (qs, body) = to_scheme body in
-       (q :: qs, body)
-    | t                     -> ([], t)
+  let to_scheme ty =
+    let rec go qs ty = match ty with
+      | F.TyForall (q, body) -> go (q :: qs) body
+      | t                    -> (List.rev qs, t)
+    in go [] ty
 
   let structure t =
     match t with
@@ -174,7 +180,6 @@ module ML = struct
     | Abs of tevar * ty option * term
     | App of term * term
     | Let of tevar * ty option * term * term
-    (* END ML *)
     | Pair of term * term
     | Proj of int * term
     | Int of int

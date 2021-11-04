@@ -24,10 +24,13 @@ module type STRUCTURE = sig
      is, depth 1) types whose leaves have type ['a]. *)
   type 'a structure
 
+  (* Construct a quantified type *)
   val forall : 'a list -> 'a -> 'a structure
 
+  (* Deconstruct a quantfied type *)
   val maybeForall : 'a structure -> ('a list * 'a) option
 
+  (* Test whether a type is quantified *)
   val isForall : 'a structure -> bool
 
   (* The type ['a structure] should be a functor, i.e., it should support the
@@ -42,6 +45,9 @@ module type STRUCTURE = sig
   exception Iter2
   val iter2: ('a -> 'b -> unit) -> 'a structure -> 'b structure -> unit
 
+  (* Pretty-printer for the structure of types (client types).  It crucially
+     requires fuel argument to avoid crashing when trying to print cyclic types.
+     *)
   val print: int -> (int -> 'a -> PPrint.document) -> 'a structure
           -> PPrint.document
 
