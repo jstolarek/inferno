@@ -127,7 +127,7 @@ let (^^) (rc1, k1) (rc2, k2) =
     * Type constructors for fixed types (Int, Bool) must always be created as
       unregistered variables, not as generic variables.  For this reason
       O.to_variable needs two fresh functions: one that always creates an
-      unregistered variable, and one that changes depending whether we are in a
+      unregistered variable, and one that changes depending when we are in a
       quantified type.
  *)
 let annotation_to_variable (generic_qs : bool) (env : int list) (t : O.ty) :

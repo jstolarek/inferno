@@ -362,7 +362,23 @@ let app x y =
   ML.App (x, y)
 
 let abs x y =
-  ML.abs (x, y)
+  ML.Abs (x, None, y)
+
+let let_ (x, m, n) =
+  ML.Let (x, None, m, n)
+
+let gen v =
+  let x = ML.fresh_tevar () in
+  ML.Let (x, None, v, FrozenVar x)
+
+
+let gen_annot v ty =
+  let x = ML.fresh_tevar () in
+  ML.Let (x, Some ty, v, ML.FrozenVar x)
+
+let inst m =
+  let x = ML.fresh_tevar () in
+  ML.Let (x, None, m, ML.Var x)
 
 let w =
   var "w"
@@ -419,7 +435,7 @@ let (<<) f g x = f(g(x))
 (* Environment with some functions from Figure 2 *)
 
 (* id : ∀ a. a → a *)
-let fml_id k = ML.let_ ("id", abs "x" x, k)
+let fml_id k = let_ ("id", abs "x" x, k)
 
 (* choose : ∀ a. a → a → a *)
 let fml_choose k = ML.Let ("choose",
@@ -427,25 +443,25 @@ let fml_choose k = ML.Let ("choose",
   abs "x" (abs "y" x), k)
 
 (* auto : (∀ a. a → a) → (∀ a. a → a) *)
-let fml_auto k = ML.let_ ("auto", ML.Abs ("x", forall_a_a_to_a,
-                                               app x (frozen "x")), k)
+let fml_auto k = let_ ("auto", ML.Abs ("x", forall_a_a_to_a,
+                                            app x (frozen "x")), k)
 
 (* auto' : (∀ a. a → a) → b → b *)
-let fml_autoprim k = ML.let_ ("auto'", ML.Abs ("x", forall_a_a_to_a, app x x), k)
+let fml_autoprim k = let_ ("auto'", ML.Abs ("x", forall_a_a_to_a, app x x), k)
 
 (* app : ∀ a b. (a → b) → a → b *)
-let fml_app k = ML.let_ ("app", abs "f" (abs "x" (app f x)), k)
+let fml_app k = let_ ("app", abs "f" (abs "x" (app f x)), k)
 
 (* revapp : ∀ a b. b → (a → b) → b *)
-let fml_revapp k = ML.let_ ("revapp", abs "x" (abs "f" (app f x)), k)
+let fml_revapp k = let_ ("revapp", abs "x" (abs "f" (app f x)), k)
 
 (* zero : Int → Int.  Turns every Int into 0.  This function replaces `inc`
    from FreezeML paper for all intents and purposes, since we only care about
    typing *)
-let fml_zero k = ML.let_ ("zero", ML.Abs ("x", Some TyInt, ML.Int 0), k)
+let fml_zero k = let_ ("zero", ML.Abs ("x", Some TyInt, ML.Int 0), k)
 
 (* poly : (∀ a. a → a) → (Int × Bool) *)
-let fml_poly k = ML.let_ ("poly", ML.Abs ("g", forall_a_a_to_a,
+let fml_poly k = let_ ("poly", ML.Abs ("g", forall_a_a_to_a,
    ML.Pair (app g one, app g tru)), k)
 
 (* pair : ∀ a b. a → b → (a × b) *)
@@ -543,7 +559,7 @@ let a1 =
  *)
 let a1_dot =
   { name = "A1̣∘"
-  ; term = ML.gen (abs "x" (abs "y" y))
+  ; term = gen (abs "x" (abs "y" y))
   ; typ  = Some (TyForall ((), TyForall ((),
              TyArrow (TyVar 0, TyArrow (TyVar 1, TyVar 1)))))
   ; vres = true
@@ -698,7 +714,7 @@ let a10_star =
 let a11_star =
   { name = "A11⋆"
   ; term = (fml_poly)
-           (app poly (ML.gen (abs "x" x)))
+           (app poly (gen (abs "x" x)))
   ; typ  = Some (TyProduct (TyInt, TyBool))
   ; vres = true
   }
@@ -711,7 +727,7 @@ let a11_star =
 let a12_star =
   { name = "A12⋆"
   ; term = (fml_id << fml_poly)
-           (app (app id poly) (ML.gen (abs "x" x)))
+           (app (app id poly) (gen (abs "x" x)))
   ; typ  = Some (TyProduct (TyInt, TyBool))
   ; vres = true
   }
@@ -809,7 +825,7 @@ let e3 =
 let e3_dot =
   { name = "E3∘"
   ; term = (fml_e3_r)
-           (app (var "r") (ML.gen (abs "x" (ML.gen (abs "y" y)))))
+           (app (var "r") (gen (abs "x" (gen (abs "y" y)))))
   ; typ  = Some TyInt
   ; vres = true
   }
@@ -827,7 +843,7 @@ let e3_dot =
 let f9 =
   { name = "F9"
   ; term = (fml_revapp << fml_id << fml_poly)
-           (ML.let_ ("f", app (var "revapp") (frozen "id"), app (var "f") poly))
+           (let_ ("f", app (var "revapp") (frozen "id"), app (var "f") poly))
   ; typ  = Some (TyProduct (TyInt, TyBool))
   ; vres = true
   }
@@ -863,7 +879,7 @@ let f10_dagger =
   { name = "F10†"
   ; term = (fml_choose << fml_id << fml_autoprim)
            (app (app choose id) (ML.Abs ("x", forall_a_a_to_a,
-                                         ML.gen (app auto' (frozen "x")))))
+                                         gen (app auto' (frozen "x")))))
   ; typ  = Some (TyArrow (TyForall ((), TyArrow (TyVar 0, TyVar 0)),
                           TyForall ((), TyArrow (TyVar 0, TyVar 0))))
   ; vres = false
@@ -906,7 +922,7 @@ let bad3 =
   { name = "bad3"
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
-                    ML.let_ ("f", app (var "bot") (var "bot"),
+                    let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app poly (frozen "f"), app (var "f") one)))))
   ; typ  = None
   ; vres = true
@@ -919,7 +935,7 @@ let bad3_no_value_restriction =
   { name = "bad3_no_value_restriction"
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
-                    ML.let_ ("f", app (var "bot") (var "bot"),
+                    let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app poly (frozen "f"), app (var "f") one)))))
   ; typ  = None
   ; vres = false
@@ -934,7 +950,7 @@ let bad4 =
   { name = "bad4"
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
-                    ML.let_ ("f", app (var "bot") (var "bot"),
+                    let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
   ; typ  = None
   ; vres = true
@@ -947,7 +963,7 @@ let bad4_no_value_restriction =
   { name = "bad4_no_value_restriction"
   ; term = (fml_poly)
            (ML.Abs ("bot", Some (TyForall (1, TyVar 1)),
-                    ML.let_ ("f", app (var "bot") (var "bot"),
+                    let_ ("f", app (var "bot") (var "bot"),
                             (ML.Pair (app (var "f") one, app poly (frozen "f"))))))
   ; typ  = None
   ; vres = false
@@ -960,7 +976,7 @@ let bad4_no_value_restriction =
  *)
 let bad5 =
   { name = "bad5"
-  ; term = ML.let_ ("f", abs "x" x, app (frozen "f") one)
+  ; term = let_ ("f", abs "x" x, app (frozen "f") one)
   ; typ  = None
   ; vres = true
   }
@@ -973,7 +989,7 @@ let bad5 =
 let bad6 =
   { name = "bad6"
   ; term = (fml_id)
-           (ML.let_ ("f", abs "x" x, app (app id (frozen "f")) one))
+           (let_ ("f", abs "x" x, app (app id (frozen "f")) one))
   ; typ  = None
   ; vres = true
   }
@@ -1024,7 +1040,7 @@ let fml_const_false =
 *)
 let fml_inst_1 =
   { name = "inst_1"
-  ; term = app (ML.let_ ("id", abs "x" x, id)) one
+  ; term = app (let_ ("id", abs "x" x, id)) one
   ; typ  = Some TyInt
   ; vres = true
   }
@@ -1036,7 +1052,7 @@ let fml_inst_1 =
 let fml_inst_2 =
   { name = "inst_2"
   ; term = (fml_id << fml_auto)
-           (app (ML.let_ ("x", app auto (frozen "id"), x)) one)
+           (app (let_ ("x", app auto (frozen "id"), x)) one)
   ; typ  = Some TyInt
   ; vres = true
   }
@@ -1091,7 +1107,7 @@ let fml_inst_sig_2 =
 *)
 let fml_id_app =
   { name = "id_app"
-  ; term = ML.let_ ("f",
+  ; term = let_ ("f",
                     app (abs "x" x) one,
                     var "f")
   ; typ  = Some TyInt
@@ -1104,7 +1120,7 @@ let fml_id_app =
 *)
 let fml_quantifier_placement_1 =
   { name = "quantifier_placement_1"
-  ; term = ML.let_ ("f",
+  ; term = let_ ("f",
                     abs "x" one,
                     var "f")
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyInt)))
@@ -1117,7 +1133,7 @@ let fml_quantifier_placement_1 =
 *)
 let fml_quantifier_placement_2 =
   { name = "quantifier_placement_2"
-  ; term = ML.let_ ("f",
+  ; term = let_ ("f",
                     abs "x" one,
                     frozen "f")
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyInt)))
@@ -1134,7 +1150,7 @@ let fml_nested_forall_inst_1 =
            (ML.Abs ("x",
                     Some (TyArrow ( TyForall (1, TyArrow (TyVar 1, TyVar 1))
                                   , TyForall (1, TyArrow (TyVar 1, TyVar 1)))),
-                    app (ML.inst (app x (frozen "id"))) one))
+                    app (inst (app x (frozen "id"))) one))
   ; typ  = Some
       (TyArrow
         (TyArrow ( TyForall ((), TyArrow (TyVar 0, TyVar 0))
@@ -1156,7 +1172,7 @@ let fml_nested_forall_inst_2 =
                             ((TyForall (1, TyArrow ((TyForall (2, TyArrow (TyVar 2, TyVar 2))), TyArrow (TyVar 1, TyVar 1)))),
                              (TyForall (1, TyArrow ((TyForall (2, TyArrow (TyVar 2, TyVar 2))), TyArrow (TyVar 1, TyVar 1))))))
           , id
-          , ML.let_ ( "g", app (var "f") (ML.gen auto')
+          , let_ ( "g", app (var "f") (gen auto')
                     , app (var "g") (frozen "id"))))
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyVar 0)))
   ; vres = true
@@ -1176,7 +1192,7 @@ let fml_nested_forall_inst_3 =
                             (TyArrow ((TyForall (2, TyArrow (TyVar 2, TyVar 2))), TyArrow (TyVar 1, TyVar 1)),
                              TyArrow ((TyForall (2, TyArrow (TyVar 2, TyVar 2))), TyArrow (TyVar 1, TyVar 1))))))
           , id
-          , ML.let_ ( "g", app (var "f") (app id auto')
+          , let_ ( "g", app (var "f") (app id auto')
                     , app (var "g") (frozen "id"))))
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyVar 0)))
   ; vres = true
@@ -1254,7 +1270,7 @@ let fml_let_annot_4 =
 *)
 let fml_let_annot_5 =
   { name = "let_annot_5"
-  ; term = ML.let_ ("id", abs "x" x,
+  ; term = let_ ("id", abs "x" x,
       ML.Let ("choose", Some (TyForall (1, TyForall (2, TyArrow (TyVar 1,
                                              TyArrow (TyVar 2, TyVar 2))))),
                    abs "x" (abs "y" x), app choose id))
@@ -1420,7 +1436,7 @@ let fml_mono_binder_constraint_1 =
 *)
 let fml_mono_binder_constraint_2 =
   { name = "mono_binder_constraint_2"
-  ; term = ML.let_ ("f", abs "x" (app (var "x") one), var "f")
+  ; term = let_ ("f", abs "x" (app (var "x") one), var "f")
   ; typ  = Some (TyForall ((), TyArrow (TyArrow (TyInt, (TyVar 0)), TyVar 0)))
   ; vres = true
   }
@@ -1500,7 +1516,7 @@ let fml_quantifier_ordering_4 =
 *)
 let fml_redundant_quantifiers_1 =
   { name = "quantifier_placement_3"
-  ; term = ML.let_ ("f",
+  ; term = let_ ("f",
                     app (abs "x" one) (abs "y" y),
                     frozen "f")
   ; typ  = Some (TyForall ((), TyInt))
@@ -1528,7 +1544,7 @@ let fml_type_annotations_1 =
 *)
 let fml_id_appl =
   { name = "let_annot_1"
-  ; term = ML.let_ ("id", abs "x" x, app (frozen "id") one)
+  ; term = let_ ("id", abs "x" x, app (frozen "id") one)
   ; typ  = None
   ; vres = true
   }
@@ -1554,7 +1570,7 @@ let fml_choose_choose =
 let fml_choose_choose_let =
   { name = "choose_choose_let"
   ; term = (fml_choose)
-  (ML.let_ ( "f"
+  (let_ ( "f"
            , app choose (frozen "choose")
            , app f (frozen "choose")))
   ; typ  = Some (TyForall ((), TyArrow (TyVar 0, TyArrow (TyVar 0, TyVar 0))))
@@ -1921,7 +1937,7 @@ let fml_e3_dot_no_lambda_sig =
   ; term = ML.Let ("r", Some (TyArrow (TyForall (1, TyArrow (TyVar 1,
                                TyForall (2, TyArrow (TyVar 2, TyVar 2)))), TyInt)),
                         abs "x" one,
-                   app (var "r") (ML.gen (abs "x" (ML.gen (abs "y" y)))))
+                   app (var "r") (gen (abs "x" (gen (abs "y" y)))))
   ; typ  = None
   ; vres = true
   }
@@ -1946,7 +1962,7 @@ let fml_free_unification_vars_1 =
 let fml_free_unification_vars_2 =
   { name = "free_unification_vars_2"
   ; term = (fml_id << fml_revapp)
-           (ML.let_ ("f", (app (var "revapp") (frozen "id")), f))
+           (let_ ("f", (app (var "revapp") (frozen "id")), f))
   ; typ  = Some (TyForall ((), TyArrow (TyArrow
                 (TyForall ((), TyArrow (TyVar 0, TyVar 0)), TyVar 0), TyVar 0)))
   ; vres = true
@@ -1959,7 +1975,7 @@ let fml_free_unification_vars_2 =
 let fml_value_restriction_1 =
   { name = "fml_value_restriction_1"
   ; term = (fml_id)
-           (ML.let_ ("f", (app id id), app f (frozen "id")))
+           (let_ ("f", (app id id), app f (frozen "id")))
   ; typ  = None
   ; vres = true
   }
@@ -1974,7 +1990,7 @@ let fml_value_restriction_1 =
 let fml_value_restriction_2 =
   { name = "fml_value_restriction_2"
   ; term = (fml_id)
-           (ML.let_ ("f", ML.let_ ("g", one, (app id id)), app f (frozen "id")))
+           (let_ ("f", let_ ("g", one, (app id id)), app f (frozen "id")))
   ; typ  = None
   ; vres = true
   }
@@ -1987,7 +2003,7 @@ let fml_value_restriction_2 =
 let fml_value_restriction_3 =
   { name = "fml_value_restriction_3"
   ; term = (fml_id << fml_poly)
-           (ML.let_ ("f", (app id id), app poly (frozen "f")))
+           (let_ ("f", (app id id), app poly (frozen "f")))
   ; typ  = None
   ; vres = true
   }

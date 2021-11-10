@@ -105,7 +105,7 @@ end
 (* -------------------------------------------------------------------------- *)
 
 (* The unifier type structure is decoded into the target calculus type structure
-   as follows. *)
+   as follows.  See SolverSig module for high-level comments about functions. *)
 
 module O = struct
 
@@ -123,7 +123,7 @@ module O = struct
   let variable x =
     F.TyVar x
 
-  (* Creates one F.TyForall per quantifier.  If no quantifiers are given returns
+  (* Create one F.TyForall per quantifier.  If no quantifiers are given return
      unmodified body. *)
   let forall qs body = List.fold_right (fun q t -> F.TyForall (q, t)) qs body
 
@@ -185,23 +185,6 @@ module ML = struct
     | Int of int
     | Bool of bool
 
-  (* Unannotated abstraction and let *)
-  let abs (x, m) = Abs (x, None, m)
-
-  let let_ (x, m, n) = Let (x, None, m, n)
-
-  (* FreezeML syntactic sugar *)
-  let gen v =
-    let x = fresh_tevar () in
-    Let (x, None, v, FrozenVar x)
-
-  let gen_annot v ty =
-    let x = fresh_tevar () in
-    Let (x, Some ty, v, FrozenVar x)
-
-  let inst m =
-    let x = fresh_tevar () in
-    Let (x, None, m, Var x)
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -231,9 +214,15 @@ let product_i i x y =
   else
     product y x
 
+let rec is_val = function
+  | ML.App _            -> false
+  | ML.Let (_, _, n, m) -> is_val n && is_val m
+  | _                   -> true
+
+(* Value restriction *)
 let rec is_gval = function
   | ML.App _ | ML.FrozenVar _ -> false
-  | ML.Let (_, _, _, t)       -> is_gval t
+  | ML.Let (_, _, n, m)       -> is_val n && is_gval m
   | _                         -> true
 
 (* Ensures that all elements of xs appearing in ys appear at the front and in
@@ -253,10 +242,6 @@ let rec align_order equal xs ys = match xs, ys with
    take place in different phases, but the code is written as if there was just
    one phase. *)
 
-(* The function [analyse] takes a source term [t] and an expected type [w].
-   No type environment is required, as everything is built into the constraint via
-   suitable combinators, such as [def]. *)
-
 let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                 (w : variable) : F.nominal_term co
 = let hastype = hastype value_restriction in
@@ -270,7 +255,6 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
 
     (* Variable. *)
   | ML.Var x ->
-
       (* [w] must be an instance of the type scheme associated with [x]. *)
       instance x w <$$> fun tys ->
       (* The translation makes the type application explicit. *)
@@ -278,32 +262,33 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
 
     (* Frozen variable. *)
   | ML.FrozenVar x ->
+     (* Frozen variables are not instantiated but taken directly from the
+        environment. *)
       frozen_instance x w <$$> fun () ->
-      (* The translation makes the type application explicit. *)
+      (* Unlike in the Var case, there's no type application for frozen
+         variables. *)
       F.Var x
 
     (* Abstraction. *)
   | ML.Abs (x, ann, u) ->
 
      (* Construct an existential variable with structure defined by the type
-        annotation. *)
+        annotation. [false] flag means "generate unregistered variables" (as
+        opposed to generic, instantiable variables). *)
       let ty = Inferno.Option.map (annotation_to_variable false env) ann in
 
       exist ?v:ty (fun v1 ->
 
-        (* Here, we could use [exist_], because we do not need [ty2]. I refrain
-           from using it, just to simplify the paper. *)
-        exist (fun v2 ->
+        (* Use [exist_] because we don't need the resulting type in the
+           generated System F term. *)
+        exist_ (fun v2 ->
           (* [w] must be the function type [v1 -> v2]. *)
-          (* Here, we could use [^^], instead of [^&], so as to avoid building
-             a useless pair. I refrain from using it, just to simplify the
-             paper. *)
-          w --- arrow v1 v2 ^&
-          (* Under the assumption that [x] has type [domain], the term [u] must
-             have type [codomain]. *)
+          w --- arrow v1 v2 ^^
+            (* FIXME: this differs from C-Abs rule in that it doesn't generate a
+               def constraint.  See bug #35 *)
             let1_mono x ty (fun v -> v -- v1) (hastype env u v2)
         )
-      ) <$$> fun (ty1, (_ty2, ((), (_, _, (), u')))) ->
+      ) <$$> fun (ty1, (_, _, (), u')) ->
         (* Once these constraints are solved, we obtain the translated function
            body [u']. There remains to construct an explicitly-typed abstraction
            in the target calculus. *)

@@ -60,6 +60,9 @@ let fresh_generic t =
 (* -------------------------------------------------------------------------- *)
 
 let print_var v =
+  (* In order to print the types containing client-defined types and
+     solver-defined unification variables we need a pair of mutually recursive
+     functions.  We additionally limit*)
   let rec var_printer    fuel v = U.print fuel struct_printer v and
           struct_printer fuel s = S.print fuel var_printer    s in
   var_printer Debug.fuel v
