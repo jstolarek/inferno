@@ -237,10 +237,14 @@ let rec align_order equal xs ys = match xs, ys with
 (* -------------------------------------------------------------------------- *)
 
 (* The client uses the combinators provided by the solver so as to transparently
-   1- analyse the source term and produce constraints; and 2- decode the solution
-   of the constraints and produce a term in the target calculus. These two steps
-   take place in different phases, but the code is written as if there was just
-   one phase. *)
+   1- analyse the source term and produce constraints; and 2- decode the
+   solution of the constraints and produce a term in the target calculus. These
+   two steps take place in different phases, but the code is written as if there
+   was just one phase.
+
+   [value_restriction] argument controls behaviour of let generalization.  [env]
+   stores a list of rigid type variables brought into scope by type annotations
+   on let bindings. *)
 
 let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
                 (w : variable) : F.nominal_term co
@@ -298,18 +302,18 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
   | ML.App (t1, t2) ->
 
       (* Introduce a type variable to stand for the unknown argument type. *)
-      exist (fun v ->
+      exist_ (fun v ->
         lift (hastype env) t1 (arrow v w) ^&
         (hastype env) t2 v
-      ) <$$> fun (_ty, (t1', t2')) ->
+      ) <$$> fun (t1', t2') ->
       F.App (t1', t2')
 
-    (* Generalization. *)
+    (* Let bindings. *)
   | ML.Let (x, ann, t, u) ->
 
      (* Extend bound type variables environment.  This ensures quantifiers
         introduced in an annotation are visible in the bound term and can be
-        used in annotations. *)
+        used in annotations inside it. *)
      let bound_env = match ann with
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
@@ -324,10 +328,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
 
      let1 x ty (hastype bound_env t) (hastype env u w) <$$>
        fun (t, a, t', u') ->
-       (* [a] are the type variables that we must introduce (via
-          Lambda-abstractions) while type-checking [t']. [t] is a type of bound
-          terms.  Let us denote quantifiers of [t] as [b].  In FreezeML [a] is a
-          subset of [b].  Consider:
+       (* [a] are the type variables that we must introduce via Lambda (type)
+          abstractions while type-checking [t'].  [t] is a type of bound term.
+          Let us denote quantifiers of [t] as [b].  In FreezeML [a] is a subset
+          of [b].  Consider:
 
           let x = auto ~id in ...
 
@@ -361,9 +365,6 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
       ) <$$> fun t ->
       F.Proj (i, t)
 
-(* The top-level wrapper uses [let0]. It does not require an expected
-   type; it creates its own using [exist]. And it runs the solver. *)
-
 exception Unbound = Solver.Unbound
 exception NotMono = Solver.NotMono
 exception Unify = Solver.Unify
@@ -371,6 +372,9 @@ exception UnifySkolem = Solver.UnifySkolem
 exception UnifyMono = Solver.UnifyMono
 exception Cycle = Solver.Cycle
 exception MismatchedQuantifiers = Solver.MismatchedQuantifiers
+
+(* The top-level wrapper uses [let0]. It does not require an expected
+   type; it creates its own using [exist]. And it runs the solver. *)
 
 let translate (value_restriction : bool) (t : ML.term) : F.nominal_term =
   let let0 = if value_restriction && not (is_gval t)
