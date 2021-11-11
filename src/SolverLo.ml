@@ -94,6 +94,7 @@ let print_schemes vs =
    but not in the high-level interface [SolverHi]. So, it could be easily
    modified if desired. *)
 
+(* FIXME: add CForall and CDef constraints.  See bug #35 *)
 type rawco =
   (* Constraints *)
   | CTrue

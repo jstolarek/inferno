@@ -281,8 +281,9 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
         opposed to generic, instantiable variables). *)
       let ty = Inferno.Option.map (annotation_to_variable false env) ann in
 
+      (* FIXME: when type signature is missing this existential should have
+         monomorphic restriction.  See bug #35 *)
       exist ?v:ty (fun v1 ->
-
         (* Use [exist_] because we don't need the resulting type in the
            generated System F term. *)
         exist_ (fun v2 ->
@@ -311,6 +312,9 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
     (* Let bindings. *)
   | ML.Let (x, ann, t, u) ->
 
+     (* FIXME: annotated let bindings should use CForall and CDef constraints
+        once they are added.  It will probably make sense to separate this out
+        into a case dedicated to annotated lets.  See bug #35 *)
      (* Extend bound type variables environment.  This ensures quantifiers
         introduced in an annotation are visible in the bound term and can be
         used in annotations inside it. *)
