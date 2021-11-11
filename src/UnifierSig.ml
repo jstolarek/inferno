@@ -20,7 +20,6 @@
 
 (* The structure of types is described to the unifier as follows. *)
 
-(* BEGIN STRUCTURE *)
 module type STRUCTURE = sig
 
   (* The type ['a structure] should be understood as a type of shallow (that
@@ -54,9 +53,7 @@ module type STRUCTURE = sig
   val print: int -> (int -> 'a -> PPrint.document) -> 'a structure
           -> PPrint.document
 
-(* END *)
 end
-(* END STRUCTURE *)
 
 (* -------------------------------------------------------------------------- *)
 (* -------------------------------------------------------------------------- *)

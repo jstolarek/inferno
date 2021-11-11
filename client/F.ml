@@ -28,7 +28,6 @@
    while the de Bruijn representation is more convenient when type-checking
    F. *)
 
-(* BEGIN F *)
 type ('a, 'b) typ =
   | TyVar of 'a
   | TyArrow of ('a, 'b) typ * ('a, 'b) typ
@@ -37,15 +36,10 @@ type ('a, 'b) typ =
   | TyMu of 'b * ('a, 'b) typ
   | TyInt
   | TyBool
-(* END F *)
 
-(* BEGIN F *)
 type tyvar = int
-(* END F *)
 
-(* BEGIN F *)
 type nominal_type = (tyvar, tyvar) typ
-(* END F *)
 
 type debruijn_type =
     (DeBruijn.index, unit) typ
@@ -67,11 +61,8 @@ let rec string_of_typ (t : nominal_type)  =
 
 (* Nominal representation of term variables and binders. *)
 
-(* BEGIN F *)
 type tevar = string
-(* END F*)
 
-(* BEGIN F *)
 type ('a, 'b) term =
   | Var of tevar
   | Abs of tevar * ('a, 'b) typ * ('a, 'b) term
@@ -79,15 +70,12 @@ type ('a, 'b) term =
   | Let of tevar * ('a, 'b) term * ('a, 'b) term
   | TyAbs of 'b * ('a, 'b) term
   | TyApp of ('a, 'b) term * ('a, 'b) typ
-(* END F *)
   | Pair of ('a, 'b) term * ('a, 'b) term
   | Proj of int * ('a, 'b) term
   | Int of int
   | Bool of bool
 
-(* BEGIN F *)
 type nominal_term = (tyvar, tyvar) term
-(* END F *)
 
 type debruijn_term =
     (DeBruijn.index, unit) term
@@ -95,16 +83,13 @@ type debruijn_term =
 (* -------------------------------------------------------------------------- *)
 
 (* Constructors. *)
-(* BEGIN F *)
 
 let ftyabs vs t =
   List.fold_right (fun v t -> TyAbs (v, t)) vs t
 let ftyapp t tys =
   List.fold_left (fun t ty -> TyApp (t, ty)) t tys
-(* END F *)
 
 (* Decoder. *)
-(* BEGIN F *)
 
 let decode_tyvar (t : nominal_type) =
   match t with
@@ -112,8 +97,6 @@ let decode_tyvar (t : nominal_type) =
   | _ ->
      Printf.fprintf stdout "Assertion failed.  Type variable expected but type found.\n";
      assert false
-
-(* END F *)
 
 (* -------------------------------------------------------------------------- *)
 

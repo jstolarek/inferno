@@ -1,11 +1,14 @@
 (******************************************************************************)
 (*                                                                            *)
-(*                                  Inferno                                   *)
+(*                             Frozen Inferno                                 *)
 (*                                                                            *)
-(*                       François Pottier, Inria Paris                        *)
+(*                    Jan Stolarek, University of Edinburgh                   *)
 (*                                                                            *)
-(*  Copyright Inria. All rights reserved. This file is distributed under the  *)
-(*  terms of the MIT License, as described in the file LICENSE.               *)
+(*  Derived from Inferno code created by François Pottier, Inria Paris.       *)
+(*                                                                            *)
+(*  Copyright University of Edinburgh and Inria. All rights reserved. This    *)
+(*  file is distributed under the terms of the MIT License, as described in   *)
+(*  the file LICENSE.                                                         *)
 (*                                                                            *)
 (******************************************************************************)
 
@@ -17,7 +20,6 @@ open SolverSig
    which solves a constraint and annotates it, so as to publish information
    that can be exploited in the reconstruction phase. *)
 
-(* BEGIN LOW *)
 module Make
   (X : TEVAR)
   (S : STRUCTURE)
@@ -133,6 +135,4 @@ module Make
      with a type decoder. *)
   val decode_scheme: decoder -> ischeme -> ty
 
-(* END *)
 end
-(* END LOW *)
