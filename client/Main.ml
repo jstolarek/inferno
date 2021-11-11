@@ -42,6 +42,11 @@ let attempt log msg f x =
   try
     f x
   with e ->
+    (* All exceptions corresponding to source program being ill-typed
+       (e.g. unification errors) are handled inside [translate].  If we get an
+       exception at this point it means an implementation bug since we must have
+       generated an ill-typed System F program.  See also comment in [translate]
+       below. *)
     begin
     match e with
     | FTypeChecker.NotAnArrow ty ->
@@ -72,15 +77,9 @@ let attempt log msg f x =
            Printf.fprintf stdout "%s" (Printexc.get_backtrace ());
          )
     end;
-    (* Any exception at this point is an implementation bug since it means we
-       generated an ill-typed System F program *)
     Result.ImplementationBug
 
 (* -------------------------------------------------------------------------- *)
-
-(* A wrapper over the client's [translate] function. We consider ill-typedness
-   as normal, since our terms are randomly generated, so we translate the client
-   exceptions to [None]. *)
 
 let print_type ty =
   PPrint.(ToChannel.pretty 0.9 80 stdout (FPrinter.print_type ty ^^ hardline))
@@ -93,6 +92,7 @@ let print_types tys =
      (lbracket ^^ separate comma (List.map FPrinter.print_type tys) ^^ rbracket
       ^^ hardline))
 
+(* A wrapper over the client's [translate] function. *)
 let translate log (t, value_restriction) =
   try
     Result.WellTyped (Client.translate value_restriction t)
@@ -144,11 +144,12 @@ let translate log (t, value_restriction) =
          print_types xs
        );
      IllTyped
-  (* JSTOLAREK: other exceptions are thrown due to bugs in the implementation.
-     I'm catching them here to simplify testing by not having to comment out
-     failing test cases.  No exceptions should ever happen in a correct
-     implementation other than Client exceptions, which are used to communicate
-     typechecking errors. *)
+  (* No exceptions should ever happen in a correct implementation other than
+     Client exceptions, which are used to communicate typechecking errors.
+     However, our implementation is not proven correct and implementation bugs
+     do happen.  Catching them here and reporting them explicitly in the
+     testsuite driver greatly simplifies testing since we don't need to comment
+     out buggy test cases.  *)
   | exn ->
      log_action log (fun () ->
         Printf.fprintf stdout "Implementation bug.\n";
@@ -177,18 +178,18 @@ let print_summary_and_exit () =
 (* -------------------------------------------------------------------------- *)
 
 
-(* Running all passes over a single ML term. *)
-
-type example = { name : string
-               ; term : ML.term
-               ; typ  : debruijn_type option
-               ; vres : bool (* enable value restriction? *)
-               }
+(* Representation of a single test *)
+type test =
+  { name : string               (* test name to report in the results *)
+  ; term : ML.term              (* term to typecheck                  *)
+  ; typ  : debruijn_type option (* expected type.  None if ill-typed  *)
+  ; vres : bool                 (* enable value restriction?          *)
+  }
 
 (* The returned boolean indicates if the example "works", meaning that
    - the term had the expected type    or
    - failed to typecheck as expected.
-  An implementation bug always means that the example doesn't work. *)
+  An implementation bug always means test failure. *)
 let test_driver { name; term; typ; vres } : log * bool =
   let log = create_log() in
   log_action log (fun () ->
@@ -209,6 +210,10 @@ let test_driver { name; term; typ; vres } : log * bool =
      log, true
 
   | WellTyped (t : F.nominal_term), Some exp_ty ->
+     (* Term is determined to be well-typed and is expected to be as such.  We
+        now need to check whether the inferred type is the same as the expected
+        one. And we need to be careful since implementation bugs can result
+        in exceptions when elaborating the term to System F. *)
       let works = ref false in
       log_action log (fun () ->
         Printf.printf "Formatting the System F term...\n%!";
@@ -220,9 +225,9 @@ let test_driver { name; term; typ; vres } : log * bool =
       match attempt log
               "Converting the System F term to de Bruijn style...\n"
               F.translate t with
-      | IllTyped -> assert false
+      | IllTyped -> assert false (* Should never come from [attmept] *)
       | ImplementationBug ->
-         (* Typechecking caused an exception *)
+         (* Elaborating term to System F caused an exception *)
          log_action log (fun () ->
              Printf.printf "Example %s triggered an implementation bug!\n" name;
            );
@@ -231,7 +236,7 @@ let test_driver { name; term; typ; vres } : log * bool =
          match attempt log
                  "Type-checking the System F term...\n"
                  FTypeChecker.typeof t with
-         | IllTyped -> assert false
+         | IllTyped -> assert false (* Should never come from [attmept] *)
          | ImplementationBug ->
             (* Typechecking caused an exception *)
             log_action log (fun () ->
@@ -239,13 +244,13 @@ let test_driver { name; term; typ; vres } : log * bool =
               );
          | WellTyped ty ->
             log_action log (fun () ->
-                if ( exp_ty = ty ) then
+                if ( exp_ty = ty ) then (* Expected and actual types match. *)
                   begin
                     Printf.printf "Pretty-printing the System F de Bruijn type...\n%!";
                     let doc = PPrint.(string "  " ^^ FPrinter.print_debruijn_type ty ^^ hardline) in
                     PPrint.ToChannel.pretty 0.9 80 stdout doc;
                   end
-                else
+                else (* Actual type differs from expected type *)
                   begin
                     Printf.printf "Expected type does not match actual type!\n";
                     Printf.printf "Expected:\n";
@@ -261,6 +266,8 @@ let test_driver { name; term; typ; vres } : log * bool =
       end;
       log, !works
   | IllTyped, Some exp_ty ->
+     (* Solver claim the program is ill-typed but we expected it to be
+        well-typed. *)
      log_action log (fun () ->
          Printf.printf "Example %s expected to have a type:\n" name;
          let doc = PPrint.(string "  " ^^ FPrinter.print_debruijn_type exp_ty ^^ hardline) in
@@ -270,19 +277,23 @@ let test_driver { name; term; typ; vres } : log * bool =
      log, false
 
   | WellTyped t, None ->
-      log_action log (fun () ->
-        Printf.printf "Formatting the System F term...\n%!";
-        let doc = PPrint.(string "  " ^^ nest 2 (FPrinter.print_term t) ^^ hardline) in
-        Printf.printf "Pretty-printing the System F term...\n%!";
-        PPrint.ToChannel.pretty 0.9 80 stdout doc
-      );
-      begin
-      match attempt log
+     (* Solver found the program to be well-typed but we expected it to be
+        rejected by the solver.  Similarly to earlier case we need to be careful
+        when translating the typechecked term to System F since we might run
+        into problems with implementation bugs. *)
+     log_action log (fun () ->
+         Printf.printf "Formatting the System F term...\n%!";
+         let doc = PPrint.(string "  " ^^ nest 2 (FPrinter.print_term t) ^^ hardline) in
+         Printf.printf "Pretty-printing the System F term...\n%!";
+         PPrint.ToChannel.pretty 0.9 80 stdout doc
+       );
+     begin
+       match attempt log
               "Converting the System F term to de Bruijn style...\n"
               F.translate t with
       | IllTyped -> assert false
       | ImplementationBug ->
-         (* Typechecking caused an exception *)
+         (* Elaborating term to System F caused an exception *)
          log_action log (fun () ->
              Printf.printf "Example %s triggered an implementation bug!\n" name;
            );
@@ -305,8 +316,8 @@ let test_driver { name; term; typ; vres } : log * bool =
                 Printf.printf "Example %s epected to be ill-typed but typechecks.\n" name;
               );
          end;
-      end;
-      log, false
+     end;
+     log, false
 
   | ImplementationBug, _ ->
      (* Typechecking caused an exception *)
@@ -352,6 +363,8 @@ let known_broken_test t : unit =
 
 (* -------------------------------------------------------------------------- *)
 
+(* Syntactic sugar to simplify writing of tests *)
+
 let var x =
   ML.Var x
 
@@ -370,7 +383,6 @@ let let_ (x, m, n) =
 let gen v =
   let x = ML.fresh_tevar () in
   ML.Let (x, None, v, FrozenVar x)
-
 
 let gen_annot v ty =
   let x = ML.fresh_tevar () in
@@ -416,23 +428,27 @@ let poly =
 let one =
   ML.Int 1
 
-let tru =
+let true_ =
   ML.Bool true
 
-let fals =
+let false_ =
   ML.Bool false
 
-(* Application of equality operator *)
+(* Application of equality operator to two terms *)
 let eq x y =
   app (app (var "==") x) y
 
-let forall_a_a_to_a = Some (TyForall (1, TyArrow (TyVar 1, TyVar 1)))
+(* This is commonly used. *)
+let forall_a_a_to_a =
+  Some (TyForall (1, TyArrow (TyVar 1, TyVar 1)))
 
-(* FreezeML examples from PLDI paper*)
-
+(* Function composition.  Because OCaml doesn't have one :-/ *)
 let (<<) f g x = f(g(x))
 
-(* Environment with some functions from Figure 2 *)
+(* -------------------------------------------------------------------------- *)
+
+(* Environment with functions from Figure 2 in PLDI paper.  Note that any
+   functions involving lists are omitted. *)
 
 (* id : ∀ a. a → a *)
 let fml_id k = let_ ("id", abs "x" x, k)
@@ -462,7 +478,7 @@ let fml_zero k = let_ ("zero", ML.Abs ("x", Some TyInt, ML.Int 0), k)
 
 (* poly : (∀ a. a → a) → (Int × Bool) *)
 let fml_poly k = let_ ("poly", ML.Abs ("g", forall_a_a_to_a,
-   ML.Pair (app g one, app g tru)), k)
+   ML.Pair (app g one, app g true_)), k)
 
 (* pair : ∀ a b. a → b → (a × b) *)
 let fml_pair k = ML.Let ("pair",
@@ -479,52 +495,55 @@ let fml_pairprim k = ML.Let ("pair'",
 (* only used in E3 *)
 let fml_e3_r k =
   ML.Let
-    ("r",
-     Some (TyArrow (TyForall (1, TyArrow (TyVar 1,
-                    TyForall (2, TyArrow (TyVar 2, TyVar 2)))), TyInt)),
-     ML.Abs
+    ( "r"
+    , Some (TyArrow (TyForall (1, TyArrow (TyVar 1,
+                     TyForall (2, TyArrow (TyVar 2, TyVar 2)))), TyInt))
+    , ML.Abs
        ("x",
         Some (TyForall (1, TyArrow (TyVar 1,
                 TyForall (2, TyArrow (TyVar 2, TyVar 2))))),
-        one),
-     k)
+        one)
+    , k )
 
 (* (==) : ∀ a. a → a → Bool *)
 let fml_eq k =
-   ML.Let ("=="
+   ML.Let ( "=="
           , Some (TyForall (1, TyArrow (TyVar 1, TyArrow (TyVar 1, TyBool))))
-          , abs "x" (abs "y" tru)
+          , abs "x" (abs "y" true_)
           , k )
-
-(* more definitions *)
 
 (* id_int : Int → Int *)
 let fml_id_int k =
   ML.Let ( "id_int", Some (TyArrow (TyInt, TyInt)), abs "x" x, k )
 
 
-let env k = (
-    fml_id       <<
-    fml_choose   <<
-    fml_auto     <<
-    fml_autoprim <<
-    fml_app      <<
-    fml_revapp   <<
-    fml_zero     <<
-    fml_poly     <<
-    fml_pair     <<
-    fml_pairprim
-  ) k
+(* -------------------------------------------------------------------------- *)
 
-(* Test basic well-formedness of functions in the environment *)
+(* Tests *)
+
+(* Test functions making up the basic environment *)
 let env_test =
   { name = "env_test"
-  ; term = env (ML.Int 1)
+  ; term = (fml_id       <<
+            fml_choose   <<
+            fml_auto     <<
+            fml_autoprim <<
+            fml_app      <<
+            fml_revapp   <<
+            fml_zero     <<
+            fml_poly     <<
+            fml_pair     <<
+            fml_pairprim <<
+            fml_eq       <<
+            fml_id_int)
+           (ML.Int 1)
   ; typ  = Some TyInt
   ; vres = true
   }
 
-(* PLDI paper examples (Figure 2) *)
+(* PLDI paper examples (Figure 2).  Some examples are marked as MISSING.  This
+   is because they use features not implemented in inferno.  Typically this
+   means lists. *)
 
 (* Note: inferno does not permit unbound type variables in the resulting System
    F term.  Therefore in the inferred types all free type variables are bound at
@@ -742,7 +761,7 @@ let a12_star =
 let b1_star =
   { name = "B1⋆"
   ; term = ML.Abs ("f", forall_a_a_to_a, ML.Pair (app f one,
-                                                  app f tru))
+                                                  app f true_))
   ; typ  = Some (TyArrow (TyForall ((), TyArrow (TyVar 0, TyVar 0)),
                           TyProduct (TyInt, TyBool)))
   ; vres = true
@@ -997,8 +1016,8 @@ let bad6 =
 
 (* Examples that were not in the PLDI paper *)
 
-(* This was causing an exception in FTypeChecker because I didn't extend type
-   equality checker with TyInt
+(* This was causing an exception in FTypeChecker because type equality checker
+   wasn't extended to support TyInt.
 
    term : λ(x : ∀ a. a → a). x 1
    type : (∀ a. a → a) → Int
@@ -1017,7 +1036,7 @@ let fml_id_to_int =
 *)
 let fml_id_to_bool =
   { name = "id_to_bool"
-  ; term = ML.Abs ("x", forall_a_a_to_a, app x fals)
+  ; term = ML.Abs ("x", forall_a_a_to_a, app x false_)
   ; typ  = Some (TyArrow (TyForall ((), TyArrow (TyVar 0, TyVar 0)), TyBool))
   ; vres = true
   }
@@ -1028,7 +1047,7 @@ let fml_id_to_bool =
 *)
 let fml_const_false =
   { name = "const_false"
-  ; term = ML.Abs ("x", Some TyBool, fals)
+  ; term = ML.Abs ("x", Some TyBool, false_)
   ; typ  = Some (TyArrow (TyBool, TyBool))
   ; vres = true
   }
@@ -1096,7 +1115,7 @@ let fml_inst_sig_2 =
   ; term = ML.Let ("id_int",
                    Some (TyArrow (TyInt, TyInt)),
                    abs "x" x,
-                   app (var "id_int") tru)
+                   app (var "id_int") true_)
   ; typ  = None
   ; vres = true
   }
@@ -1208,7 +1227,7 @@ let fml_nested_forall_inst_4 =
                   , Some (TyForall (1, TyArrow (TyVar 1, TyArrow
                          (TyForall (2, TyArrow (TyVar 2, TyVar 1)),TyInt))))
                   , abs "x" (ML.Abs ("y", Some (TyForall (2, TyArrow (TyVar 2, TyVar 1))), one))
-                  , app x tru)
+                  , app x true_)
   ; typ  = Some (TyArrow (TyForall ((), TyArrow (TyVar 0, TyBool)), TyInt))
   ; vres = true
   }
@@ -1451,7 +1470,7 @@ let fml_quantifier_ordering_1 =
            (app (ML.Abs ("f", Some (TyForall (1, TyForall (2,
                                       TyArrow (TyVar 1, TyArrow (TyVar 2,
                                       TyProduct (TyVar 1, TyVar 2))))))
-                            , app (app (var "f") one) tru))
+                            , app (app (var "f") one) true_))
                 (frozen "pair"))
   ; typ  = Some (TyProduct (TyInt, TyBool))
   ; vres = true
@@ -1468,7 +1487,7 @@ let fml_quantifier_ordering_2 =
            (app (ML.Abs ("f", Some (TyForall (1, TyForall (2,
                                       TyArrow (TyVar 1, TyArrow (TyVar 2,
                                       TyProduct (TyVar 1, TyVar 2))))))
-                            , app (app (var "f") one) tru))
+                            , app (app (var "f") one) true_))
                 (frozen "pair'"))
   ; typ  = None
   ; vres = true
@@ -1796,7 +1815,7 @@ let fml_mixed_prefix_2_no_sig =
 let fml_mixed_prefix_3 =
   { name = "mixed_prefix_3"
   ; term = app (app (abs "x" (ML.Let ("y", forall_a_a_to_a, abs "z" x, y))) one)
-               tru
+               true_
   ; typ  = None
   ; vres = true
   }
@@ -1814,7 +1833,7 @@ let fml_mixed_prefix_4 =
                      , Some (TyForall (1, TyArrow (TyVar 1, TyArrow (TyVar 1,
                                  TyProduct (TyBool, TyBool)))))
                      , abs "z" (abs "x" (ML.Pair (eq x z, eq w z))), y))
-           ) tru) one) one)
+           ) true_) one) one)
   ; typ  = None
   ; vres = true
   }
