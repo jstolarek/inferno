@@ -1,13 +1,17 @@
 (******************************************************************************)
 (*                                                                            *)
-(*                                  Inferno                                   *)
+(*                             Frozen Inferno                                 *)
 (*                                                                            *)
-(*                       François Pottier, Inria Paris                        *)
+(*                    Jan Stolarek, University of Edinburgh                   *)
 (*                                                                            *)
-(*  Copyright Inria. All rights reserved. This file is distributed under the  *)
-(*  terms of the MIT License, as described in the file LICENSE.               *)
+(*  Derived from Inferno code created by François Pottier, Inria Paris.       *)
+(*                                                                            *)
+(*  Copyright University of Edinburgh and Inria. All rights reserved. This    *)
+(*  file is distributed under the terms of the MIT License, as described in   *)
+(*  the file LICENSE.                                                         *)
 (*                                                                            *)
 (******************************************************************************)
+
 
 open UnifierSig
 open SolverSig

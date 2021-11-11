@@ -1,3 +1,17 @@
+(******************************************************************************)
+(*                                                                            *)
+(*                             Frozen Inferno                                 *)
+(*                                                                            *)
+(*                    Jan Stolarek, University of Edinburgh                   *)
+(*                                                                            *)
+(*  Derived from Inferno code created by François Pottier, Inria Paris.       *)
+(*                                                                            *)
+(*  Copyright University of Edinburgh and Inria. All rights reserved. This    *)
+(*  file is distributed under the terms of the MIT License, as described in   *)
+(*  the file LICENSE.                                                         *)
+(*                                                                            *)
+(******************************************************************************)
+
 (* This sample client performs type inference for a fragment of ML and translates
    it down to a fragment of System F. *)
 
