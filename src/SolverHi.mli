@@ -84,17 +84,22 @@ module Make
 
   (* ---------------------------------------------------------------------- *)
 
-  val annotation_to_variable : bool -> int list -> ty -> variable
+  (* [annotation_to_variable] converts a type signature to a unifier variable.
+     First argument is a list of variables considered to be in scope.  Second
+     argument tells whether to treat these quantifiers in scope as generic or
+     not. *)
+  val annotation_to_variable : int list -> bool -> ty -> variable
 
   (* ---------------------------------------------------------------------- *)
 
   (* Existential quantification. *)
 
-  (* Assume that the user-supplied function [c], applied to a fresh type
-     variable [v], produces a constraint of type ['a]. Then, [exist c] wraps it
-     in an existential quantifier for [v]. This results in a constraint of type
-     [ty * 'a], where the left-hand component of the pair, a decoded type, is
-     the witness for [v]. *)
+  (* Assume that the user-supplied function [c], applied to a type variable [v],
+     produces a constraint of type ['a]. Then, [exist c] wraps it in an
+     existential quantifier for [v]. This results in a constraint of type [ty *
+     'a], where the left-hand component of the pair, a decoded type, is the
+     witness for [v].  Client might provide a concrete structure of [v]
+     corresponding to a source-level type annotation. *)
   val exist: ?v:variable -> (variable -> 'a co) -> (ty * 'a) co
 
   (* [construct t c] is analogous to [exist c], but additionally constrains
@@ -130,17 +135,20 @@ module Make
      [v]. *)
   val instance: tevar -> variable -> ty list co
 
-  (* JSTOLAREK: document this *)
-  val frozen_instance: tevar -> variable -> unit co
+  (* [freeze x v] requires [v] to have the type of [x].  Since no instantiation
+     of quantifiers is performedm there is no need to return any types to the
+     client.  *)
+  val freeze: tevar -> variable -> unit co
 
   (* ---------------------------------------------------------------------- *)
 
   (* Construction of constraint abstractions, a.k.a. generalization. *)
 
-  (* [let1 x c1 c2] binds the term variable [x] to the constraint abstraction
-     [c1] in the constraint [c2]. (Technically, [c1] is a function of a fresh
-     type variable to a constraint, as in [exist].) The resulting constraint
-     produces a tuple of 4 results, namely:
+  (* [let1_* x ty c1 c2] binds the term variable [x] with structure [ty] to the
+     constraint abstraction [c1] in the constraint [c2]. (Technically, [c1] is a
+     function of a fresh type variable to a constraint, as in [exist].)
+     [let1] comes in two flavours: generalising and monomorphising.
+     The resulting constraint produces a tuple of 4 results, namely:
      - the (decoded) type scheme that was assigned to [x] while solving [c2].
      - a list [vs] of (decoded) type variables that may appear in [a1], and (hence)
        should be universally bound by the client in [a1]. In a typical scenario,
@@ -150,7 +158,6 @@ module Make
      - the value [a2] produced by the constraint [c2]. *)
   val let1_gen: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
-
   val let1_mono: tevar -> variable option -> (variable -> 'a co) -> 'b co ->
             (ty * tyvar list * 'a * 'b) co
 
@@ -160,11 +167,11 @@ module Make
   val let0_gen: 'a co  -> (tyvar list * 'a) co
   val let0_mono: 'a co  -> (tyvar list * 'a) co
 
-  (* [letn xs c1 c2] binds [n] term variables [xs] to [n] constraint abstractions
-     in the constaint [c2]. Here, [c1] is a function of [n] fresh type variables
-     [vs] to a constraint. The [i]-th term variable, [x_i], ends up bound to the
-     constraint abstraction of the [i]-th type variable in [c_1], which one could
-     write [\lambda v_i.c_1]. *)
+  (* [letn xs tys c1 c2] binds [n] term variables [xs] (with optional types
+     [tys]) to [n] constraint abstractions in the constaint [c2]. Here, [c1] is
+     a function of [n] fresh type variables [vs] to a constraint. The [i]-th
+     term variable, [x_i], ends up bound to the constraint abstraction of the
+     [i]-th type variable in [c_1], which one could write [\lambda v_i.c_1]. *)
   val letn: clet_type -> (tevar * variable option) list -> (variable list -> 'a co) -> 'b co ->
             (ty list * tyvar list * 'a * 'b) co
 
@@ -187,6 +194,8 @@ module Make
   (* The argument to [solve] must have an application of [let0] at its root. This
      is a way of ensuring that the final result has no free type variables. *)
 
+  val solve: bool -> 'a co -> 'a
+
   exception Unbound of tevar
   exception NotMono of tevar * ty
   exception Unify of ty * ty
@@ -194,6 +203,5 @@ module Make
   exception Cycle of ty
   exception UnifyMono
   exception MismatchedQuantifiers of ty list * ty list
-  val solve: bool -> 'a co -> 'a
 
 end

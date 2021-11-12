@@ -282,7 +282,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
   | ML.FrozenVar x ->
      (* Frozen variables are not instantiated but taken directly from the
         environment. *)
-      frozen_instance x w <$$> fun () ->
+      freeze x w <$$> fun () ->
       (* Unlike in the Var case, there's no type application for frozen
          variables. *)
       F.Var x
@@ -293,7 +293,7 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
      (* Construct an existential variable with structure defined by the type
         annotation. [false] flag means "generate unregistered variables" (as
         opposed to generic, instantiable variables). *)
-      let ty = Inferno.Option.map (annotation_to_variable false env) ann in
+      let ty = Inferno.Option.map (annotation_to_variable env false) ann in
 
       (* FIXME: when type signature is missing this existential should have
          monomorphic restriction.  See bug #35 *)
@@ -336,8 +336,9 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
          | Some ann -> let (qs, _) = O.to_scheme ann in List.append qs env
          | _        -> env in
 
-     (* Convert type annotation to an internal representation *)
-     let ty = Inferno.Option.map (annotation_to_variable true env) ann in
+     (* Convert type annotation to an internal representation.  Treat variables
+        in scope as generic. *)
+     let ty = Inferno.Option.map (annotation_to_variable env true) ann in
 
      (* Pick appropriate function for constructing let constraint *)
      let let1 = if value_restriction && not (is_gval t)

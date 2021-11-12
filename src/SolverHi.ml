@@ -98,8 +98,8 @@ let (^^) (rc1, k1) (rc2, k2) =
 
 (* -------------------------------------------------------------------------- *)
 
-(* This function converts a type signature to a unifier variable.  There are
-   several subtleties here:
+(* [annotation_to_variable] converts a type signature to a unifier variable.
+   There are several subtleties here:
 
     * Annotations can either be placed on let expressions or on lambda binders.
       Annotation on a let expression brings its quantifiers into scope in the
@@ -121,7 +121,9 @@ let (^^) (rc1, k1) (rc2, k2) =
       unregistered variable, and one that changes depending when we are in a
       quantified type.
  *)
-let annotation_to_variable (generic_qs : bool) (env : int list) (t : O.ty) :
+(* JSTOLAREK: I don't like this function.  It is convoluted, feels fragile and I
+   fear it is very client-specific. *)
+let annotation_to_variable (env : int list) (generic_qs : bool) (t : O.ty) :
       Lo.variable =
   let extend_env fresh env qs =
     List.fold_left
@@ -226,9 +228,9 @@ let instance x v =
        the user. *)
     List.map decode (WriteOnceRef.get witnesses)
 
-let frozen_instance x v =
-  (* In the constraint construction phase, create a write-once reference,
-     and stick it into the constraint, for the solver to fill. *)
+let freeze x v =
+  (* No need to decode any types.  Frozen variables appear as they are without
+     any type annotations or instantiations. *)
   CFrozen (x, v), fun _env -> ()
 
 (* -------------------------------------------------------------------------- *)
@@ -240,9 +242,10 @@ let frozen_instance x v =
    bound the term variables [xs]. *)
 
 let letn clet_type xs f1 (rc2, k2) =
-  (* For each term variable [x], create a fresh type variable [v], as in
-     [CExist]. Also, create an uninitialized scheme hook, which will receive
-     the type scheme of [x] after the solver runs. *)
+  (* For each term variable [x], either create a fresh type variable [v] or use
+     structure of the variable (type annotation) provided by the client , as in
+     [CExist]. Also, create an uninitialized scheme hook, which will receive the
+     type scheme of [x] after the solver runs. *)
   let xvss = List.map (fun (x, ty) ->
     let v = match ty with
       | None   -> fresh None
