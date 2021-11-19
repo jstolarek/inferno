@@ -132,10 +132,6 @@ exception MismatchedQuantifiers = G.MismatchedQuantifiers
 
 let solve (rectypes : bool) (c : rawco) : unit =
 
-  (* Initialize the generalization engine. It has mutable state, so [state]
-     does not need to be an explicit parameter of the recursive function
-     [solve]. *)
-
   let debug (str : string) (doc : PPrint.document) =
     let open PPrint in
     Debug.print (string str ^^ doc) in
@@ -157,6 +153,10 @@ let solve (rectypes : bool) (c : rawco) : unit =
           hardline ^^
           print_var v) in
     Debug.print message in
+
+  (* Initialize the generalization engine. It has mutable state, so [state]
+     does not need to be an explicit parameter of the recursive function
+     [solve]. *)
 
   let state = G.init() in
 

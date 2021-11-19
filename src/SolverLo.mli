@@ -44,7 +44,7 @@ module Make
   (* [fresh t] creates a fresh type variable, with optional structure [t]. *)
   val fresh: variable structure option -> variable
 
-  (* [fresh_generic t] creates a fresh generic (quantified) variable. *)
+  (* [fresh_generic t] creates a fresh generic variable.  *)
   val fresh_generic: variable structure option -> variable
 
   (* The type [ischeme] describes the solver's type schemes. *)
@@ -78,18 +78,25 @@ module Make
        witnesses. This list indicates how the type scheme was instantiated. *)
   | CInstance of tevar * variable * variable list WriteOnceRef.t
 
-    (* JSTOLAREK: document this *)
+  (* A frozen term variable, [x w].  Variable [x] must be bound in the
+     environment, either with CDef or CLet.  [w] receives the type of [x] stored
+     in the environment, including outer forall quantifiers. *)
   | CFrozen of tevar * variable
 
-    (* A nontrivial type scheme definition, [let [x, v, s?]* C1 in C2 [vs?]].
-       In short, for each triple [x, v, s?] in the list, the term variable [x]
-       is bound to the constraint abstraction [\v.C1], and the write-once
-       reference [s?] is filled with a type scheme that represents a simplified
-       form of this constraint abstraction. The environment is extended with
-       all of these new bindings when [C2] is examined. The write-once reference
-       [vs?] is filled with a list of type variables that must be universally
-       quantified in the left-hand side of the [let] construct so as to be in
-       scope when [C1] is decoded. *)
+  (* A nontrivial type scheme definition, [let r [x, a, s?]* [v]* C1 in C2
+     [vs?]], where [r] is let type (generalizing or monomorphising).  For each
+     triple [x, a, s?] and corresponding [v] in the list, the term variable [x]
+     is bound to the constraint abstraction [\v.C1], and the write-once
+     reference [s?] is filled with a type scheme that represents a simplified
+     form of this constraint abstraction. The environment is extended with all
+     of these new bindings when [C2] is examined. The write-once reference [vs?]
+     is filled with a list of type variables that must be universally quantified
+     in the left-hand side of the [let] construct so as to be in scope when [C1]
+     is decoded.
+
+     Note that there's a one-to-one correspondence between [x, a, s?]* and [v]*.
+     These lists could be merged into one but it would make operating on them
+     more difficult. *)
   | CLet of clet_type
         * (tevar * variable * ischeme WriteOnceRef.t) list
         * variable list

@@ -243,7 +243,7 @@ let freeze x v =
 
 let letn clet_type xs f1 (rc2, k2) =
   (* For each term variable [x], either create a fresh type variable [v] or use
-     structure of the variable (type annotation) provided by the client , as in
+     structure of the variable (type annotation) provided by the client, as in
      [CExist]. Also, create an uninitialized scheme hook, which will receive the
      type scheme of [x] after the solver runs. *)
   let xvss = List.map (fun (x, ty) ->
