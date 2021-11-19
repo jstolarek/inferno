@@ -84,11 +84,12 @@ val            id: variable -> int
 val     structure: variable -> variable structure option
 val set_structure: variable -> variable structure option -> unit
 val has_structure: variable -> bool
+
 val is_skolem    : variable -> bool
 val skolemize    : variable -> unit
 val unskolemize  : variable -> unit
+
 val is_monomorphic  : variable -> bool
-val set_monomorphic : variable -> bool -> unit
 val monomorphize    : variable -> unit
 val unmonomorphize  : variable -> unit
 

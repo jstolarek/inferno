@@ -658,7 +658,9 @@ let instantiate state { quantifiers; body } =
   (* Enforcing proper order of evaluation is crucial here *)
   let quantifiers' = List.map (copy true) quantifiers in
   let body         = copy true body in
-  List.iter2 (fun v v' -> U.set_monomorphic v' (U.is_monomorphic v))
+  List.iter2 (fun v v' -> if  (U.is_monomorphic v)
+                          then U.monomorphize v'
+                          else U.unmonomorphize v')
              quantifiers quantifiers';
   quantifiers', body
 
