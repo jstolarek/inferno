@@ -153,11 +153,6 @@ module PureVarMap : Map.S with type key = variable
 
 val equivalent: variable -> variable -> bool
 
-(* [is_representative] maps exactly one member of each equivalence class to
-   [true]. *)
-
-val is_representative: variable -> bool
-
 (* -------------------------------------------------------------------------- *)
 
 (* [new_occurs_check is_young] initiates a new cycle detection phase. It

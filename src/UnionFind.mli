@@ -38,8 +38,3 @@ val union: ('a -> 'a -> 'a) -> 'a point -> 'a point -> unit
 (** [equivalent point1 point2] tells whether [point1] and [point2]
     belong to the same equivalence class. *)
 val equivalent: 'a point -> 'a point -> bool
-
-(** [is_representative] maps exactly one member of each equivalence class
-    to [true]. *)
-val is_representative: 'a point -> bool
-

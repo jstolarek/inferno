@@ -155,12 +155,6 @@ let print (fuel : int) f v =
     else
       empty
   end ^^
-  begin
-    if ( Debug.print_repr && TUnionFind.is_representative v ) then
-      comma ^^ space ^^ string "repr"
-    else
-      empty
-  end ^^
   rbrace
   end
   else
@@ -371,9 +365,6 @@ let monomorphize v =
 
 let equivalent =
   TUnionFind.equivalent
-
-let is_representative =
-  TUnionFind.is_representative
 
 (* -------------------------------------------------------------------------- *)
 

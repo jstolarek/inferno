@@ -60,13 +60,6 @@ let equivalent point1 point2 =
 let compare point1 point2 =
   compare (repr point1) (repr point2)
 
-let is_representative point =
-  match TRef.get point with
-  | Link _ ->
-      false
-  | Info _ ->
-      true
-
 (* This version of [repr] performs path compression and must be used within a
    transaction. (If [TRef] offered a write operation that works both within
    and outside a transaction, we could use that.) *)

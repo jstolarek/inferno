@@ -36,5 +36,3 @@ val equivalent: 'a point -> 'a point -> bool
 
 val compare: 'a point -> 'a point -> int
 
-val is_representative: 'a point -> bool
-

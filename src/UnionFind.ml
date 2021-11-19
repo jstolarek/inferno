@@ -117,12 +117,3 @@ let union f point1 point2 =
     belong to the same equivalence class. *)
 let equivalent point1 point2 =
   repr point1 == repr point2
-
-(** [is_representative] maps exactly one member of each equivalence class
-    to [true]. *)
-let is_representative point =
-  match !point with
-  | Link _ ->
-      false
-  | Info _ ->
-      true

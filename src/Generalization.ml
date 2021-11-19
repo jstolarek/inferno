@@ -357,7 +357,6 @@ let show_variable v =
   Printf.printf "id = %d, rank = %d" (U.id v) (U.rank v);
   if (U.is_monomorphic v) then Printf.printf ", mono";
   if (U.is_skolem v) then Printf.printf ", skolem";
-  if (Debug.print_repr && U.is_representative v) then Printf.printf ", repr";
   Printf.printf "\n";
   flush stdout
 
