@@ -114,12 +114,6 @@ type scheme = {
 
 (* -------------------------------------------------------------------------- *)
 
-(* The constant [generic] is defined as [-1]. This rank is used for the variables
-   that form the generic (to-be-copied) part of a type scheme. *)
-
-let generic =
-  -1
-
 (* The rank [no_rank] is defined as [0]. This rank is used when a variable is
    freshly created and is not known to us yet. *)
 
@@ -209,7 +203,7 @@ let unbound_quantifiers { quantifiers; body } =
       U.VarMap.find inScope v;
       acc (* Quantifier in scope, all fine *)
     with Not_found ->
-      if (U.rank v = generic && not (U.has_structure v))
+      if (U.rank v = U.generic && not (U.has_structure v))
       then v :: acc (* Unbound generic quantifier that we're looking for *)
       else
         let { quantifiers; body } = scheme v in
@@ -255,7 +249,7 @@ let bound_quantifiers { quantifiers; body } =
    structure.  Top-level means not inside a forall. *)
 let toplevel_generic_variables body =
   let rec go v acc =
-    let acc = if (U.rank v == generic) then v :: acc else acc in
+    let acc = if (U.rank v == U.generic) then v :: acc else acc in
     if not (isForall v) then (* Don't descend into foralls. *)
       begin
         let { quantifiers; body } = scheme v in
@@ -281,9 +275,9 @@ let all_generic_vars_bound { quantifiers; body } =
       U.VarMap.find inScope v;
       true (* Bound variables are fine *)
     with Not_found ->
-      if (U.rank v = generic && not (U.has_structure v))
+      if (U.rank v = U.generic && not (U.has_structure v))
       then false (* Unbound generic quantifiers are bad *)
-      else if (U.rank v = generic && U.has_structure v && toplevel)
+      else if (U.rank v = U.generic && U.has_structure v && toplevel)
       then false (* Generic variables at top level are bad *)
       else
         let { quantifiers; body } = scheme v in
@@ -309,8 +303,8 @@ let drop_unused_quantifiers { body; _ } =
 let freshen_nested_quantifiers state { quantifiers; body } =
   let freshen_quantifiers env qs = List.fold_left (fun acc q ->
       assert (U.structure q = None);
-      assert (U.rank q = generic);
-      U.PureVarMap.add q (U.fresh None generic) acc
+      assert (U.rank q = U.generic);
+      U.PureVarMap.add q (U.fresh None U.generic) acc
     ) env qs in
 
   let rec copy visited v =
@@ -333,7 +327,7 @@ let freshen_nested_quantifiers state { quantifiers; body } =
   (* Identity map for top-level quantifiers.  We don't freshen those *)
   let toplevel_qs = List.fold_left (fun acc q ->
       assert (U.structure q = None);
-      assert (U.rank q = generic);
+      assert (U.rank q = U.generic);
       U.PureVarMap.add q q acc
     ) U.PureVarMap.empty quantifiers in
 
@@ -527,7 +521,7 @@ let exit rectypes state roots =
             U.adjust_rank v (
               S.fold (fun child accu ->
                 traverse child;
-                if U.rank child = generic
+                if U.rank child = U.generic
                 then max (U.rank v    ) accu
                 else max (U.rank child) accu
               ) t base_rank (* the base rank is neutral for [max] *)
@@ -562,7 +556,7 @@ let exit rectypes state roots =
   let vs =
     List.filter (fun v ->
       begin
-        if U.rank v = generic then
+        if U.rank v = U.generic then
           (* A copy of this variable already visited, discard *)
           false
         else
@@ -572,7 +566,7 @@ let exit rectypes state roots =
         end
         else begin
           assert (U.rank v = state.young);
-          U.set_rank v generic;
+          U.set_rank v U.generic;
           U.structure v = None
         end
       end
@@ -624,7 +618,7 @@ let instantiate state { quantifiers; body } =
 
     else begin
       try
-        assert (U.rank v = generic);
+        assert (U.rank v = U.generic);
         U.VarMap.find visited v
       with Not_found ->
         if not toplevel then begin

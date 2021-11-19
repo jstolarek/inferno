@@ -59,7 +59,7 @@ let fresh t =
   U.fresh t G.no_rank
 
 let fresh_generic t =
-  U.fresh t G.generic
+  U.fresh t U.generic
 
 (* -------------------------------------------------------------------------- *)
 
@@ -390,7 +390,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
                                space ^^ print_scheme s);
             assert (G.all_generic_vars_bound s);
             List.iter (fun q -> assert (not (U.has_structure q));
-                                assert (U.rank q = G.generic))
+                                assert (U.rank q = U.generic))
               (G.quantifiers s);
             XMap.add x s env
           ) env xvss ss

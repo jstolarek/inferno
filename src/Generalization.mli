@@ -85,7 +85,6 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
      is nonempty, i.e., the current [enter]/[exit] balance is at least one.) *)
 
   val no_rank: int
-  val generic: int
   val register: state -> variable -> unit
   val register_signatures: state -> variable -> unit
   val remove_from_pool : state -> variable list -> unit

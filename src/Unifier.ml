@@ -55,24 +55,30 @@ and descriptor = {
   mutable structure : variable structure option;
 
   (* Every equivalence class carries an integer rank. When two classes are
-     merged, the minimum rank is retained. *)
+     merged, the minimum rank is retained. -1 is a distinguished rank denoting
+     generic variables.*)
 
   mutable rank : int;
 
-  (* FEMRICH:
-     We may consider merging {skolem} and {monomorphic} into one flag, whose value
-     can be one of
-      - Skolem: skolem, therefore it doesn't make sense to track monomorphism
-      - Monomorphic
-      - Unconstrained: "flexible", non-monomorphic variable
+  (* Every equivalence class carries a monomorphic flag.  When set a variable
+     can only be unified with monomorphic types.  Unifier is unaware of the
+     structure of client types so it needs to query the client in order to learn
+     whether a variable has polymorphic structure. *)
 
-     This would exclude the case that {monomorphic} and {skolem} are true at the
-     same time, which is an invalid state. On the other hand, it seems more
-     confusing. *)
   mutable monomorphic : bool;
+
+  (* Every equivalence class carries a skolem flag.  Skolem variable can only
+     unify with itself or a non-skolem type variable.  Two different skolem
+     variables can't be unified.  Skolems can never have a structure and thus
+     can never be unified with variables that have a structure.  Skolems are
+     used when typechecking inferred type against a signature. *)
 
   mutable skolem : bool;
 
+  (* FIXME: monomorphic and skolem flags should be mutually exclusive.  See #39
+     for discussion about merging monomorphic and skolem flags.  See #36 for
+     example of how the assumption about skolem and monomorphic flags being
+     mutually exclusive is violated. *)
 }
 
 (* -------------------------------------------------------------------------- *)
@@ -120,6 +126,14 @@ let is_monomorphic v =
 let unmonomorphize v =
   (TUnionFind.find v).monomorphic <- false
 
+(* The constant [generic] is defined as [-1]. This rank is used for the
+   variables that form the generic (to-be-copied) part of a type scheme.
+   Original inferno stored this rankl in the generalization engine, making the
+   unifier completely unaware of generic variables.  However in frozen inferno
+   unification algorithm needs to be aware of generic variables and polymorphic
+   types to unify them correctly.*)
+let generic = -1
+
 (* -------------------------------------------------------------------------- *)
 
 let print (fuel : int) f v =
@@ -131,6 +145,7 @@ let print (fuel : int) f v =
     match structure v with
     | None -> empty
     | Some s ->
+       (* callback into client code to print variable structure *)
        comma ^^ space ^^ string "structure" ^^ equals ^^ f (fuel - 1) s
   end ^^
   begin
@@ -141,13 +156,13 @@ let print (fuel : int) f v =
       empty
   end ^^
   begin
-    if ( (TUnionFind.find v).skolem ) then
+    if ( is_skolem v ) then
       comma ^^ space ^^ string "skolem"
     else
       empty
   end ^^
   begin
-    if ( (TUnionFind.find v).monomorphic ) then
+    if ( is_monomorphic v ) then
       comma ^^ space ^^ string "mono"
     else
       empty
@@ -155,6 +170,7 @@ let print (fuel : int) f v =
   rbrace
   end
   else
+    (* no more fuel *)
     lbrace ^^
     string "⋯" ^^
     rbrace
@@ -194,33 +210,59 @@ let fresh =
   let id = ref 0 in
   fun structure rank ->
     TUnionFind.fresh {
-      id = postincrement id;
-      structure = structure;
-      rank = rank;
-      skolem = false;
+      id          = postincrement id;
+      structure   = structure;
+      rank        = rank;
+      skolem      = false;
       monomorphic = false;
     }
 
 (* -------------------------------------------------------------------------- *)
 
-exception UnifyInternal (* JSTOLAREK: might be unused - see #8 *)
 exception Unify of variable * variable
 
-exception UnifySkolemInternal
+exception UnifySkolemInternal (* Used internally when unifying descriptors. *)
 exception UnifySkolem of variable * variable
+exception UnifyMono (* FIXME: we might want to store additional information
+                       inside the exception to provide better error messages.
+                       See #40. *)
 
-(* FIXME FEMRICH: We probably want to add more info to this, to aid error
-  messages.
-  It can't be just a term variable: We may unify two type vars that are both
-  monomorphic and whose mono constraints originate from different term
-  variables. Further, if we consider non-generalizing let at some point, there
-  isn't a term variable imposing the monomorphism. *)
-exception UnifyMono
+(* -------------------------------------------------------------------------- *)
 
-(* The internal function [unify t v1 v2] equates the variables [v1] and [v2]
-   and propagates the consequences of this equation until an inconsistency is
-   found or a solved form is reached. In the former case, [S.Iter2] is
-   raised. The parameter [t] is a transaction. *)
+(* Mark all variables appearing inside a type variable structure as monomorphic.
+   A `UnifyMono` exception is raised if we encounter a polymorphic type
+   (forall).  *)
+
+let rec monomorphize_variable visited v =
+  if VarMap.mem visited v then
+    () (* cyclic types considered monomorphic, do nothing when we reach already
+          visited variable *)
+  else
+    let desc = TUnionFind.find v in
+    if desc.skolem then
+      () (* nothing to do, skolems are never monomorphic *)
+    else if desc.structure = None then
+      (* Only monomorphise variables without a structure.  See #29 *)
+      desc.monomorphic <- true;
+    VarMap.add visited v ();
+    monomorphize_structure visited desc.structure
+
+and monomorphize_structure visited s_opt =
+  match s_opt with
+  | None   -> ()
+  | Some s ->
+     if S.isForall s then
+       raise UnifyMono
+     else
+       S.iter (fun v -> monomorphize_variable visited v) s
+
+(* -------------------------------------------------------------------------- *)
+
+(* The internal function [unify t v1 v2] equates the variables [v1] and [v2] and
+   propagates the consequences of this equation until an inconsistency is found
+   or a solved form is reached. In the former case, one of unification
+   exceptions is raised.  We raise [S.Iter2] when types have different
+   structure.  The parameter [t] is a transaction. *)
 
 let rec unify (t : _ TRef.transaction) (v1 : variable) (v2 : variable) : unit =
 
@@ -236,41 +278,15 @@ let rec unify (t : _ TRef.transaction) (v1 : variable) (v2 : variable) : unit =
   with
   | UnifySkolemInternal ->
      raise (UnifySkolem (v1, v2))
-  | UnifyInternal ->
-     raise (Unify (v1, v2))
 
 (* -------------------------------------------------------------------------- *)
-
-and monomorphize_variable visited v =
-  if VarMap.mem visited v then
-    () (* cyclic types considered not monomorphic *)
-  else
-    let desc = TUnionFind.find v in
-    if desc.skolem then
-      (* nothing to do, skolems are never monomorphic *)
-      ()
-    else if desc.structure = None then
-      (* Only monomorphise variables without a structure *)
-      desc.monomorphic <- true;
-    VarMap.add visited v ();
-    monomorphize_structure visited desc.structure
-
-and monomorphize_structure visited s_opt =
-  match s_opt with
-  | None   -> ()
-  | Some s ->
-     if S.isForall s then
-       raise UnifyMono
-     else
-       S.iter (fun v ->  monomorphize_variable visited v) s
-
 
 (* [unify_descriptors desc1 desc2] combines the descriptors [desc1] and
    [desc2], producing a descriptor for the merged equivalence class. *)
 
 and unify_descriptors t desc1 desc2 =
   match desc1, desc2 with
-  (* Skolems can't have a structure. Ever. *)
+  (* Skolems can't have a structure.  Ever. *)
   | _, { skolem = true; structure = Some _; _ }
   |    { skolem = true; structure = Some _; _ }, _ ->
      assert false
@@ -281,8 +297,10 @@ and unify_descriptors t desc1 desc2 =
      assert false
 
   | { id = id1; skolem = true; _ }, { id = id2; skolem = true; _ } ->
-     (* Skolem can't unify with other skolem but can unify with itself.
-        Skolems are never monomorphic. *)
+     (* A skolem can't unify with a different skolem but it can unify with
+        itself.  Skolems should never be marked as monomorphic and they
+        shouldn't be generic variables (see mixed-prefix unification check
+        below). *)
      if (id1 <> id2) then raise UnifySkolemInternal;
      assert (desc1.structure = None);
      assert (desc2.structure = None);
@@ -302,27 +320,29 @@ and unify_descriptors t desc1 desc2 =
      raise UnifySkolemInternal
 
   | _, _ ->
-     (* Mixed-prefix unification: don't unify quantified type variables with
-        out-of-scope existentials. *)
+     (* Mixed-prefix unification check: don't unify quantified type variables
+        with out-of-scope existentials. *)
      if (desc2.skolem && desc1.rank != -1) || (desc1.skolem && desc2.rank != -1)
      then raise UnifySkolemInternal;
 
-      (* skolemize *)
-     let skolem = desc1.skolem || desc2.skolem in
+     let skolem = desc1.skolem || desc2.skolem (* skolemize *) in
      let new_desc =
        { (* We pick the skolem identifier if there is such *)
          id          = if desc2.skolem then desc2.id else desc1.id;
          structure   = unify_structures t desc1.structure desc2.structure;
          rank        = min desc1.rank desc2.rank;
          skolem;
+         (* FIXME: we should never have to check skolem flag when setting the
+            monomorphic flag, these sghould be mutually exclusive.  See #39 but
+            also #36.  *)
          monomorphic = not skolem && (desc1.monomorphic || desc2.monomorphic)
        }
        in
        if new_desc.monomorphic then
          (* Propagate the monomorphism to all type vars used on the
-          structure, if it exists. *)
+            structure, if it exists. *)
          monomorphize_structure (VarMap.create 128) new_desc.structure;
-       (* Don't keep monomorphic restriction on variables with a structure *)
+       (* Don't keep monomorphic restriction on variables with a structure. *)
        if new_desc.structure != None then new_desc.monomorphic <- false;
        new_desc
 

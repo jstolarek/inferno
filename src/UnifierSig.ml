@@ -47,9 +47,8 @@ module type STRUCTURE = sig
   exception Iter2
   val iter2: ('a -> 'b -> unit) -> 'a structure -> 'b structure -> unit
 
-  (* Pretty-printer for the structure of types (client types).  It crucially
-     requires fuel argument to avoid crashing when trying to print cyclic types.
-     *)
+  (* Pretty-printer for the structure of client types.  It crucially requires
+     fuel argument to avoid crashing when trying to print cyclic types.  *)
   val print: int -> (int -> 'a -> PPrint.document) -> 'a structure
           -> PPrint.document
 
@@ -68,7 +67,7 @@ type 'a structure
 
 type variable
 
-(* Each variable carries three pieces of information, namely:
+(* Each variable carries five pieces of information, namely:
 
    - a unique identifier [id];
 
@@ -76,6 +75,13 @@ type variable
      the outgoing edges carried by this variable;
 
    - an integer [rank].
+
+   - monomorphic flag
+
+   - skolem flag
+
+   FIXME: monomorphic and skolem flags are mutually exclusive.  See #39 for
+   discussion about merging monomorphic and skolem flags.
 
    The following read & write accessors are offered: *)
 
@@ -85,25 +91,30 @@ val     structure: variable -> variable structure option
 val set_structure: variable -> variable structure option -> unit
 val has_structure: variable -> bool
 
-val is_skolem    : variable -> bool
-val skolemize    : variable -> unit
-val unskolemize  : variable -> unit
+val is_skolem  : variable -> bool
+val skolemize  : variable -> unit
+val unskolemize: variable -> unit
 
-val is_monomorphic  : variable -> bool
-val monomorphize    : variable -> unit
-val unmonomorphize  : variable -> unit
+val is_monomorphic: variable -> bool
+val monomorphize  : variable -> unit
+val unmonomorphize: variable -> unit
 
-val          rank: variable -> int
-val      set_rank: variable -> int -> unit
+val     rank: variable -> int
+val set_rank: variable -> int -> unit
 
-val         print: int -> (int -> variable structure -> PPrint.document)
-                -> variable -> PPrint.document
+(* -------------------------------------------------------------------------- *)
+
+(* A distinguished rank of generic variables. *)
+
+val generic: int
+
+(* -------------------------------------------------------------------------- *)
 
 (* [adjust_rank v k] is equivalent to [if k < rank v then set_rank v k] and
    equivalent to [set_rank v (min k (rank v))]. We offer this special-purpose
    accessor because this may help avoid some errors and gain some speed. *)
 
-val   adjust_rank: variable -> int -> unit
+val adjust_rank: variable -> int -> unit
 
 (* -------------------------------------------------------------------------- *)
 
@@ -111,6 +122,16 @@ val   adjust_rank: variable -> int -> unit
    A fresh identifier is automatically picked. *)
 
 val fresh: variable structure option -> int -> variable
+
+(* -------------------------------------------------------------------------- *)
+
+(* [print fuel print_struct var] pretty-prints a variable, including its
+   structure.  To this end it requires a pretty-printer for structure of types
+   that needs to be supplied by the client.  Both [print] and [print_struct]
+   take an [int] fuel argument to allow printing of cyclic types. *)
+
+val print: int -> (int -> variable structure -> PPrint.document) -> variable
+        -> PPrint.document
 
 (* -------------------------------------------------------------------------- *)
 
