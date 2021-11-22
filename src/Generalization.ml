@@ -116,12 +116,10 @@ type scheme = {
 
 (* The rank [no_rank] is defined as [0]. This rank is used when a variable is
    freshly created and is not known to us yet. *)
-
 let no_rank =
   0
 
 (* The positive ranks are valid indices into the pool array. *)
-
 let base_rank =
   no_rank + 1
 
@@ -148,54 +146,57 @@ let body { body; _ } =
   body
 
 let has_quantifiers { quantifiers; _ } =
-  List.length quantifiers > 0
+  not (quantifiers = [])
 
 (* -------------------------------------------------------------------------- *)
 
 (* Helper functions *)
 
 (* Does the variable have a forall structure? *)
-let isForall v =
+let is_forall v =
   Option.map S.isForall (U.structure v) = Some true
 
 (* -------------------------------------------------------------------------- *)
 
-(* A smart constructor of type schemes for variables constructed from type
-   annotation. *)
+(* Utility functions working with type schemes. *)
 
-(* Turn a variable into a scheme with no quantifiers *)
+(* Simple constructor for situations where we can't use record name punting *)
+let make_scheme quantifiers body = {quantifiers; body}
+
+(* Turn a variable into a scheme with no quantifiers. *)
 let degenerate_scheme body = { quantifiers = []; body }
 
-let append_quantifiers qs { quantifiers; body } =
+(* Add quantifiers at the beginning of a type scheme. *)
+let prepend_quantifiers qs { quantifiers; body } =
   { quantifiers = List.append qs quantifiers ; body }
 
-(* JSTOLAREK: document how this works on structure created by
-   SolverHi.annotation_to_structure *)
-let rec scheme body =
-  match U.structure body with
-  | None   -> degenerate_scheme body
-  | Some s ->
-     match S.maybeForall s with
-     | None            -> degenerate_scheme body
-     | Some ([], body) -> scheme body
-     | Some (qs, body) -> append_quantifiers qs (scheme body)
-
+(* Flatten foralls nested inside a variable structure, ensuring that all
+   quantifiers nested inside the structure are pulled to the top level of the
+   scheme. *)
 let rec flatten_outer_foralls { quantifiers; body } =
   match U.structure body with
   | None   -> { quantifiers; body }
   | Some s ->
+     let go scheme = prepend_quantifiers quantifiers
+                                        (flatten_outer_foralls scheme) in
      match S.maybeForall s with
-     | None            -> { quantifiers; body }
-     | Some ([], body) -> flatten_outer_foralls (degenerate_scheme body)
-     | Some (qs, body) -> flatten_outer_foralls (append_quantifiers qs {quantifiers; body})
+     | None             -> { quantifiers; body }
+     | Some ([], body') -> go (degenerate_scheme body')
+     | Some (qs, body') -> go (make_scheme qs body')
 
-(* Returns all unbound quantifiers (rank -1, no structure) in a scheme *)
+(* A smart constructor of type schemes for variables constructed from type
+   annotation.  Uses [flatten_outer_foralls] to ensure all nested quantifiers
+   are correctly pulled to the top level. *)
+let scheme body = flatten_outer_foralls (degenerate_scheme body)
+
+(* Returns all unbound quantifiers (rank -1, no structure) in a scheme.  At the
+   moment only used internally in the [Generalization] module. *)
 let unbound_quantifiers { quantifiers; body } =
-  let extend_env env qs = List.fold_left (fun acc q ->
-      (* Only register quantifiers without structure, since quantifiers *with*
-         structure are the ones that can introduce unboud quantifiers during
-         unification. See #10. *)
-      if (not (U.has_structure q)) then U.VarMap.add acc q ();
+  let extend_env env qs = List.fold_left (fun acc v ->
+      (* Only record quantifiers without structure, since quantifiers *with*
+         structure are the ones that can introduce unbound quantifiers during
+         unification.  See #10. *)
+      if (not (U.has_structure v)) then U.VarMap.add acc v ();
       acc
     ) env qs in
   let rec go inScope v acc =
@@ -208,61 +209,37 @@ let unbound_quantifiers { quantifiers; body } =
       else
         let { quantifiers; body } = scheme v in
         match U.structure body with
-        | None   -> acc (* Non-generic variable without structure, all fine *)
+        | None   -> if (U.rank body = U.generic) then v :: acc else acc
         | Some s -> S.fold (go (extend_env inScope quantifiers)) s acc in
   let inScope : unit U.VarMap.t = extend_env (U.VarMap.create 8) quantifiers
   in Utility.unduplicate U.equivalent (go inScope body [])
 
-(* Returns all unbound type variables (no structure, positive rank) in a scheme *)
+(* Return all unbound type variables (no structure) in a scheme. *)
 let unbound_tyvars { quantifiers; body } =
   let extend_env env vs = List.fold_left (fun acc v ->
-      (* Only register variables without structure. *)
+      (* Only add variables without structure. *)
       if (not (U.has_structure v)) then U.VarMap.add acc v ();
       acc
     ) env vs in
   let rec go inScope v acc =
     try
       U.VarMap.find inScope v;
-      acc (* variable in scope, all fine *)
+      acc (* variable in scope, don't add it to the accumulator *)
     with Not_found ->
-      if (U.rank v > 0 && not (U.has_structure v))
-      then v :: acc (* Unbound generic variable that we're looking for *)
+      if (not (U.has_structure v))
+      then v :: acc (* Unbound type variable that we're looking for *)
       else
         let { quantifiers; body } = scheme v in
         match U.structure body with
-        | None   -> if (U.rank v > 0) then v :: acc else acc
+        | None   -> go (extend_env inScope quantifiers) body acc
         | Some s -> S.fold (go (extend_env inScope quantifiers)) s acc in
   let inScope : unit U.VarMap.t = extend_env (U.VarMap.create 8) quantifiers
   in Utility.unduplicate U.equivalent (go inScope body [])
 
-(* Returns all bound quantifiers in a scheme, including nested ones. *)
-let bound_quantifiers { quantifiers; body } =
-  let rec go v acc =
-    let { quantifiers; body } = scheme v in
-    let acc = List.append quantifiers acc in
-    match U.structure body with
-    | None   -> acc
-    | Some s -> S.fold go s acc
-  in Utility.unduplicate U.equivalent (go body quantifiers)
-
-(* Returns a list of generic top-level variables, both with and without
-   structure.  Top-level means not inside a forall. *)
-let toplevel_generic_variables body =
-  let rec go v acc =
-    let acc = if (U.rank v == U.generic) then v :: acc else acc in
-    if not (isForall v) then (* Don't descend into foralls. *)
-      begin
-        let { quantifiers; body } = scheme v in
-        match U.structure body with
-        | None   -> acc
-        | Some s -> S.fold go s acc
-      end
-    else acc
-  in go body []
-
 (* Check whether a variable contains unbound generic variables.  This means rank
    -1 variables that don't have a structure anywhere in the type or variables
-   with a structure not enclosed by a forall.  See #9. *)
+   with a structure not enclosed by a forall.  See #9.  Currently only used in
+   assertions. *)
 let all_generic_vars_bound { quantifiers; body } =
   let extend_env env qs = List.fold_left (fun acc q ->
       assert (U.structure q == None);
@@ -289,17 +266,46 @@ let all_generic_vars_bound { quantifiers; body } =
   let inScope : unit U.VarMap.t = extend_env (U.VarMap.create 8) quantifiers
   in go inScope body
 
+(* Returns a list of generic top-level variables, both with and without
+   structure.  Top-level means not inside a forall. *)
+(* FIXME: this function will likely be redundant when we implement handling of
+   type signatures as described in the paper.  See #41 and #38. *)
+let toplevel_generic_variables body =
+  let rec go v acc =
+    let acc = if (U.rank v == U.generic) then v :: acc else acc in
+    if not (is_forall v) then (* Don't descend into foralls. *)
+      begin
+        let { quantifiers; body } = scheme v in
+        match U.structure body with
+        | None   -> acc
+        | Some s -> S.fold go s acc
+      end
+    else acc
+  in go body []
+
+(* Sets all unbound generic variables in a scheme to have a given rank.  This
+   function feels like an enormous hack.  *)
+(* FIXME: this function will likely be redundant when we implement handling of
+   type signatures as described in the paper.  See #41 and #38. *)
 let set_unbound_generic_vars_rank { quantifiers; body } rank =
   let vs = List.filter (fun x -> not (List.mem x quantifiers))
                        (toplevel_generic_variables body) in
   List.iter (fun v -> U.set_rank v rank) vs
 
-(* Remove unused quantifiers from a scheme *)
-let drop_unused_quantifiers { body; _ } =
-  { quantifiers = unbound_quantifiers (degenerate_scheme body); body }
+(* Returns all bound quantifiers in a scheme, including nested ones. *)
+(* FIXME: currently unused *)
+let bound_quantifiers { quantifiers; body } =
+  let rec go v acc =
+    let { quantifiers; body } = scheme v in
+    let acc = List.append quantifiers acc in
+    match U.structure body with
+    | None   -> acc
+    | Some s -> S.fold go s acc
+  in Utility.unduplicate U.equivalent (go body quantifiers)
 
 (* Freshen all nested quantifiers, leaving top-level quantifiers unchanged.
    Assumes there are no unbound quantifiers. *)
+(* FIXME: currently unused *)
 let freshen_nested_quantifiers state { quantifiers; body } =
   let freshen_quantifiers env qs = List.fold_left (fun acc q ->
       assert (U.structure q = None);
@@ -316,7 +322,7 @@ let freshen_nested_quantifiers state { quantifiers; body } =
         let v' = U.fresh None (U.rank v) in
         let visited = U.PureVarMap.add v v' visited in
         let visited =
-          if isForall v
+          if is_forall v
           then let { quantifiers; _ } = scheme v in
                freshen_quantifiers visited quantifiers
           else visited in
@@ -334,9 +340,10 @@ let freshen_nested_quantifiers state { quantifiers; body } =
   { quantifiers = List.map (copy toplevel_qs) quantifiers
   ; body        = copy toplevel_qs body }
 
-
 exception MismatchedQuantifiers of U.variable list * U.variable list
 
+(* Ensures that two lists of variables have the same length and contain same
+   variables in the same order.  Throws an exception if that is not the case. *)
 let assert_variables_equal (xs : U.variable list) (ys : U.variable list) =
   if (List.length xs != List.length ys) then
     raise (MismatchedQuantifiers (xs, ys));
@@ -399,7 +406,13 @@ let register_signatures state v =
     Option.iter (S.iter go) (U.structure v)
   in go v
 
+(* FIXME: This function is most likely reundant.  See #41 *)
 let remove_from_pool ({ pool; _ } as state) vs =
+  (* FIXME: quadratic complexity here.  We mitigate this by only doing work when
+     [vs] are non-empty and then using VarMap instead of list to make checking
+     for membership cheaper.  Note that I (JS) didn't test whether using VarMap
+     actually pays off.  It well might be the case that for small [vs] the cost
+     of creating a VarMap outweights the benefits.  *)
   if vs != [] then
     let vs : unit U.VarMap.t = List.fold_left (fun acc v ->
       U.VarMap.add acc v (); acc) (U.VarMap.create 128) vs in
@@ -585,7 +598,7 @@ let exit rectypes state roots =
   List.map (fun body ->
       let s  = flatten_outer_foralls (degenerate_scheme body) in
       let qs = unbound_quantifiers s in
-      append_quantifiers qs s)
+      prepend_quantifiers qs s)
     roots
 
 (* -------------------------------------------------------------------------- *)
@@ -643,7 +656,7 @@ let instantiate state { quantifiers; body } =
         register_at_rank state v';
         U.VarMap.add visited v v';
         (* We're no longer at the top level if we enter a forall variable *)
-        let toplevel = toplevel && not (isForall v) in
+        let toplevel = toplevel && not (is_forall v) in
         U.set_structure v' (Option.map (S.map (copy toplevel)) (U.structure v));
         v'
       end

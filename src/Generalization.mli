@@ -26,22 +26,23 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
   (* The literature defines a type scheme as a type (the ``body''), placed in
      the scope of a list of universal quantifiers. Here, the quantifiers are
      just variables (which definitely carry no structure), while the body is
-     just a variable too (which possibly/probably carries some structure).
-     One may think of a type scheme as a fragment of the unification graph,
-     part of which is marked ``generic'' and is meant to be copied when the
-     type scheme is instantiated, part of which is not (the free variables, so
-     to speak).
+     just a variable too (which possibly/probably carries some structure).  One
+     may think of a type scheme as a fragment of the unification graph, part of
+     which is marked ``generic'' and is meant to be copied when the type scheme
+     is instantiated, part of which is not (the free variables, so to speak).
 
-     In first-class polymorphism we don't really have type schemes as a
-     distinguished syntactic construct: quantified types are now first-class
-     citizens. We keep the type scheme definition intact though since it is a
-     convenient data representation within the solver. *)
+     In the presence of first-class polymorphism type schemes are no longer a
+     distinguished syntactic construct in the source language: quantified types
+     are now first-class citizens.  However, we use the type scheme definition
+     internally since it is a convenient data representation within the
+     solver. *)
 
   type scheme
 
+  (* Type scheme accessors. *)
+  val body            : scheme -> variable
   val quantifiers     : scheme -> variable list
   val has_quantifiers : scheme -> bool
-  val body            : scheme -> variable
 
   (* We maintain a piece of private state, which can be abstractly thought of
      as a representation of a constraint context of the following form:
@@ -81,32 +82,48 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
      expected to register every freshly created variable with us, using the
      function [register]. This updates the state (as well as the variable's
      rank) by recording that this variable is bound at the most recent [CLet]
-     construct. (Note: [register] can be called only if the current context
-     is nonempty, i.e., the current [enter]/[exit] balance is at least one.) *)
+     construct. [register_signatures] takes an unregistered variable with a
+     structure corresponding to a source-level type signature and registers that
+     variable and all unregistered variables inside the structure.  (Note:
+     [register] and [register_signatures] can be called only if the current
+     context is nonempty, i.e. the current [enter]/[exit] balance is at least
+     one.) *)
 
-  val no_rank: int
-  val register: state -> variable -> unit
+  val no_rank            : int
+  val register           : state -> variable -> unit
   val register_signatures: state -> variable -> unit
+
+  (* Removes variables from the pool.  FIXME: feels like a hack, see #41 *)
   val remove_from_pool : state -> variable list -> unit
 
-  (* A variable can be turned into a trivial scheme, with no quantifiers and
-     no generic part: in other words, a monomorphic type scheme. Non-trivial
-     type schemes are created by the functions [enter] and [exit] below. *)
-  (* JSTOLAREK: documentation outdated, this is now an inteligent constructor *)
+  (* A smart constructor for converting a variable into a type scheme.
+     Variable's structure is traversed recursively in search for nested foralls.
+     All quantifiers from these foralls are then turned into scheme quantifiers.
+     The remaining variable is then turned into body of the scheme *)
+  val scheme : variable -> scheme
 
-  val scheme                        : variable -> scheme
-  val degenerate_scheme             : variable -> scheme
-  val bound_quantifiers             : scheme -> variable list
-  val unbound_quantifiers           : scheme -> variable list
+  (* Flattens nested foralls.  Works exactly the same as [scheme] above but
+     takes an argument that is a scheme rather than a variable.  *)
+  val flatten_outer_foralls : scheme -> scheme
+
+  (* Return all unbound type variables (no structure) in a scheme. *)
   val unbound_tyvars                : scheme -> variable list
-  val flatten_outer_foralls         : scheme -> scheme
-  val toplevel_generic_variables    : variable -> variable list
+
+  (* Test that all generic variables in a type scheme are bound. *)
   val all_generic_vars_bound        : scheme -> bool
+
+  (* Returns a list of generic top-level (= not inside a forall) variables, both
+     with and without structure. *)
+  val toplevel_generic_variables    : variable -> variable list
+
+  (* Sets all unbound generic variables in a scheme to have a given rank. *)
   val set_unbound_generic_vars_rank : scheme -> int -> unit
-  val freshen_nested_quantifiers    : state -> scheme -> scheme
-  val drop_unused_quantifiers       : scheme -> scheme
 
   exception MismatchedQuantifiers of variable list * variable list
+
+  (* Ensures that two lists of variables have the same length and contain same
+     variables in the same order.  Throws an exception if that is not the
+     case. *)
   val assert_variables_equal : variable list -> variable list -> unit
 
   (* [enter] updates the current state by pushing a new [CLet] construct. The

@@ -356,7 +356,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
 
            Note that removing variables from the pool has O(n^2) complexity
            (assuming that mutable hash has constant access time) but
-           `remove_from_pool` will actually do any work only of there are
+           `remove_from_pool` will actually do any work only if there are
            variables to be removed.  *)
         List.iter (fun s ->
             if (not (G.has_quantifiers s)) then
@@ -370,6 +370,8 @@ let solve (rectypes : bool) (c : rawco) : unit =
                from the pool but it might be the case that some nested tyvars
                make it into the pool, in which case they also should be removed.
                For now I have not run into this in practice. *)
+            (* FIXME: at the moment it seems that commenting out this function
+               doesnt't make any difference.  See #41 *)
             G.remove_from_pool state (G.toplevel_generic_variables (G.body s));
             Debug.print (string "Unbound generic variables rank fix: " ^^
                            print_scheme s)
