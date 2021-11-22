@@ -28,7 +28,7 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
    (existentially) bound. *)
 
 (* The rank of a variable is set to the current rank when the variable is
-   first created. During the lifetime of a variable, its rank can only
+   registered. Once a variable is registered, its rank can only
    decrease. Decreasing a variable's rank amounts to hoisting out the
    existential quantifier that binds this variable. *)
 
@@ -44,6 +44,9 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
    its children's ranks. These operations are performed at generalization time
    because it would be costly (and it is unnecessary) to perform them during
    unification. *)
+
+(* JSTOLAREK: description of upward and downward propagation refers to
+   original inferno and not match what frozen inferno is doing. *)
 
 (* The [rank] field maps every variable to the [CLet] construct where it is
    bound. Conversely, the [Generalization] module keeps track, for every
@@ -86,9 +89,9 @@ type state = {
    the variables that are reachable from the body, have rank [generic], and
    have no structure. *)
 
-(* Technical note (mostly to myself). The representation of type schemes is
-   not stable, in the following sense. When a scheme is first created, its
-   universal quantifiers versus free variables are recognized by their rank
+(* FPOTTIER: Technical note (mostly to myself). The representation of type
+   schemes is not stable, in the following sense. When a scheme is first created,
+   its universal quantifiers versus free variables are recognized by their rank
    (rank [generic], versus a positive rank). This remains valid as long as
    this type scheme is in scope, i.e., as long as the current rank does not
    decrease below its current value. However, the current rank ultimately
@@ -621,54 +624,57 @@ let instantiate state { quantifiers; body } =
 
   let rec copy toplevel v =
 
-    (* If this variable has positive rank, then it is not generic: we must
-       stop. *)
+    (* If this variable has positive rank, then it is not generic: we return the
+       variable as-is, no copying. *)
 
     if (U.rank v > 0) then
       v
 
-    (* If a copy of this variable has been created already, return it. *)
-
     else begin
       try
         assert (U.rank v = U.generic);
+        (* If a copy of this variable has been created already, return it. *)
         U.VarMap.find visited v
       with Not_found ->
+        (* The variable must be copied, and has not been copied yet. Create a
+           new variable, register it, and update the mapping. Then, copy its
+           descendants. Note that the mapping must be updated before making a
+           recursive call to [copy], so as to guarantee termination in the
+           presence of cyclic terms. *)
         if not toplevel then begin
             (* If we're inside a nested quantified type we copy its structure
                maintaining all the ranks.  This ensures proper instantiation of
-               outer quantifiers nested inside quantified types.  *)
+               outer quantifiers nested inside a quantified types.  It is
+               important that we don't instantiate nested quantified types. *)
             let v' = U.fresh None (U.rank v) in
+            (* Copy monomorphic restriction if present.  *)
+            if (U.is_monomorphic v) then U.monomorphize v';
             U.VarMap.add visited v v';
             (* We're no longer at the top level if we enter a forall variable *)
             U.set_structure v' (Option.map (S.map (copy false)) (U.structure v));
             v'
           end
         else begin
-
-        (* The variable must be copied, and has not been copied yet. Create a
-           new variable, register it, and update the mapping. Then, copy its
-           descendants. Note that the mapping must be updated before making a
-           recursive call to [copy], so as to guarantee termination in the
-           presence of cyclic terms. *)
-
-        let v' = U.fresh None state.young in
-        register_at_rank state v';
-        U.VarMap.add visited v v';
-        (* We're no longer at the top level if we enter a forall variable *)
-        let toplevel = toplevel && not (is_forall v) in
-        U.set_structure v' (Option.map (S.map (copy toplevel)) (U.structure v));
-        v'
-      end
+            (* We are at the top level, i.e. not inside another quantified type.
+               Copies of generic variables are therefore registered at current
+               rank.  *)
+            let v' = U.fresh None state.young in
+            (* Copy monomorphic restriction if present. *)
+            if (U.is_monomorphic v) then U.monomorphize v';
+            register_at_rank state v';
+            U.VarMap.add visited v v';
+            (* We will no longer be at the top level if we enter a variable with
+               a forall structure (quantified type). *)
+            let toplevel = toplevel && not (is_forall v) in
+            U.set_structure v' (Option.map (S.map (copy toplevel)) (U.structure v));
+            v'
+          end
       end
   in
-  (* Enforcing proper order of evaluation is crucial here *)
+  (* Enforcing proper order of evaluation is crucial here.  We need to first
+     copy the outer quantifiers. *)
   let quantifiers' = List.map (copy true) quantifiers in
   let body         = copy true body in
-  List.iter2 (fun v v' -> if  (U.is_monomorphic v)
-                          then U.monomorphize v'
-                          else U.unmonomorphize v')
-             quantifiers quantifiers';
   quantifiers', body
 
 end
