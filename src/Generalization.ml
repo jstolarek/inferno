@@ -45,9 +45,6 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
    because it would be costly (and it is unnecessary) to perform them during
    unification. *)
 
-(* JSTOLAREK: description of upward and downward propagation refers to
-   original inferno and does not match what frozen inferno is doing. *)
-
 (* The [rank] field maps every variable to the [CLet] construct where it is
    bound. Conversely, the [Generalization] module keeps track, for every
    active [CLet] construct, of a (complete) list of variables that are bound
@@ -484,11 +481,6 @@ let exit rectypes state roots =
      while upward propagation is achieved on the way up. (In reality, all rank
      updates takes place during the upward phase.)
 
-     It may be worth noting that downward propagation is required, as (for
-     instance) [instantiate] assumes that a non-generic variable cannot have
-     generic children. Upward propagation is an optional optimization; without
-     it, we would perform slightly more copying, but that would be harmless.
-
      During each traversal, every visited variable is marked as such, so as to
      avoid being visited again. To ensure that visiting every variable once is
      enough, the roots must be processed by increasing order of rank. In the
@@ -538,6 +530,13 @@ let exit rectypes state roots =
             U.adjust_rank v (
               S.fold (fun child accu ->
                 traverse child;
+                (* This bit is crucial to correctly handle generalization in the
+                   presence of nested quantified types. *)
+                (* JSTOLAREK: I can't recall the exact details of why this works
+                   and I've run out of time to properly reverse-engineer this
+                   part.  If things go wrong with generalization in the presence
+                   of nested quantified types this is one place to look for
+                   problems.  *)
                 if U.rank child = U.generic
                 then max (U.rank v    ) accu
                 else max (U.rank child) accu
