@@ -10,11 +10,17 @@
 (*                                                                            *)
 (******************************************************************************)
 
+(* -------------------------------------------------------------------------- *)
+
+(* Tweak settings in this section according to debugging needs.  See interface
+   file for details. *)
+
 let enabled     = false
-let hard        = true
+let hard        = false
 let print_ranks = true
-let print_repr  = false
 let fuel        = 8
+
+(* -------------------------------------------------------------------------- *)
 
 let print_str message =
   if enabled then prerr_endline message;
@@ -25,5 +31,4 @@ let print doc =
     PPrint.(ToChannel.pretty 0.9 80 stderr (doc ^^ hardline));
   flush stderr
 
-(* Only enabled detailed debuf if debug enabled *)
 let hard = enabled && hard

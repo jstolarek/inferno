@@ -44,7 +44,8 @@ module Make
   (* [fresh t] creates a fresh type variable, with optional structure [t]. *)
   val fresh: variable structure option -> variable
 
-  (* [fresh_generic t] creates a fresh generic variable.  *)
+  (* [fresh_generic t] creates a fresh generic variable, with optional structure
+     [t].  *)
   val fresh_generic: variable structure option -> variable
 
   (* The type [ischeme] describes the solver's type schemes. *)
@@ -79,8 +80,8 @@ module Make
   | CInstance of tevar * variable * variable list WriteOnceRef.t
 
   (* A frozen term variable, [x w].  Variable [x] must be bound in the
-     environment, either with CDef or CLet.  [w] receives the type of [x] stored
-     in the environment, including outer forall quantifiers. *)
+     environment, either with [CDef] or [CLet].  [w] receives the type of [x]
+     stored in the environment, including outer forall quantifiers. *)
   | CFrozen of tevar * variable
 
   (* A nontrivial type scheme definition, [let r [x, a, s?]* [v]* C1 in C2
@@ -108,10 +109,12 @@ module Make
 
   (* The function [solve] is parameterized by the flag [rectypes], which
      indicates whether recursive types are permitted. It expects a constraint
-     and solves it; that is, either it fails with an exception, or it succeeds
-     and fills the write-once references that are embedded in the syntax of
-     the constraint. *)
+     and solves it; that is, either it fails with one of exceptions below, or it
+     succeeds and fills the write-once references that are embedded in the
+     syntax of the constraint. *)
+  val solve: bool -> rawco -> unit
 
+  (* Exceptions to communicate errors to high-level solver interface. *)
   exception Unbound of tevar
   exception NotMono of tevar * variable
   exception Unify of variable * variable
@@ -119,7 +122,6 @@ module Make
   exception UnifyMono
   exception Cycle of variable
   exception MismatchedQuantifiers of variable list * variable list
-  val solve: bool -> rawco -> unit
 
   (* ---------------------------------------------------------------------- *)
 

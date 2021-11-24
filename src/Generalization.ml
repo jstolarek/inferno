@@ -46,7 +46,7 @@ module Make (S : STRUCTURE) (U : UNIFIER with type 'a structure = 'a S.structure
    unification. *)
 
 (* JSTOLAREK: description of upward and downward propagation refers to
-   original inferno and not match what frozen inferno is doing. *)
+   original inferno and does not match what frozen inferno is doing. *)
 
 (* The [rank] field maps every variable to the [CLet] construct where it is
    bound. Conversely, the [Generalization] module keeps track, for every
@@ -439,7 +439,8 @@ let enter state =
 
 let exit rectypes state roots =
 
-  (* Get the list [vs] of all variables in the young generation. *)
+  (* Get the list [vs] of all variables in the young generation.  These are the
+     candidates for getting generalized. *)
   let vs = InfiniteArray.get state.pool state.young in
 
   (* This hash table stores all of these variables, so that we may check
@@ -559,6 +560,7 @@ let exit rectypes state roots =
 
      Every variable that has become an alias for some other (old or young)
      variable is dropped. We keep only one representative of each class.
+     See #34.
 
      Every variable whose rank has become strictly less than [young] may be
      safely turned into an old variable. It is moved into the pool that
@@ -573,7 +575,7 @@ let exit rectypes state roots =
     List.filter (fun v ->
       begin
         if U.rank v = U.generic then
-          (* A copy of this variable already visited, discard *)
+          (* A copy of this variable already visited, discard.  See #34 *)
           false
         else
         if U.rank v < state.young then begin
@@ -592,8 +594,6 @@ let exit rectypes state roots =
   (* Update the state by emptying the current pool and decreasing [young]. *)
   InfiniteArray.set state.pool state.young [];
   state.young <- state.young - 1;
-
-  Debug.print_str "Ending generalize.exit";
 
   (* Return the list of unique generalizable variables that was constructed
      above, and a list of type schemes, obtained from the list [roots]. *)

@@ -66,12 +66,14 @@ let fresh_generic t =
 let print_var v =
   (* In order to print the types containing client-defined types and
      solver-defined unification variables we need a pair of mutually recursive
-     functions.  We additionally limit*)
+     functions.  We additionally limit the size of printed types with fuel.
+     This is necessary to avoid crashing in the presence of cyclic types. *)
   let rec var_printer    fuel v = U.print fuel struct_printer v and
           struct_printer fuel s = S.print fuel var_printer    s in
   var_printer Debug.fuel v
 
-let print_tevar v = X.print_tevar v
+let print_tevar v =
+  X.print_tevar v
 
 let print_vars vs =
   let open PPrint in
@@ -106,7 +108,7 @@ type rawco =
   | CEq of variable * variable
   | CExist of variable * rawco
   | CInstance of tevar * variable * variable list WriteOnceRef.t
-  | CFrozen   of tevar * variable
+  | CFrozen of tevar * variable
   | CLet of clet_type
         * (tevar * variable * ischeme WriteOnceRef.t) list
         * variable list (* Proxy variables *)
@@ -132,6 +134,7 @@ exception MismatchedQuantifiers = G.MismatchedQuantifiers
 
 let solve (rectypes : bool) (c : rawco) : unit =
 
+  (* Debugging utilities. *)
   let debug (str : string) (doc : PPrint.document) =
     let open PPrint in
     Debug.print (string str ^^ doc) in
@@ -168,44 +171,61 @@ let solve (rectypes : bool) (c : rawco) : unit =
     match c with
     | CTrue ->
         ()
+
     | CConj (c1, c2) ->
         Debug.print_str "Found constraint conjunction.  Solving first constraint.";
         solve env c1;
         Debug.print_str "First constraint in a conjunction solved, solving second.";
         solve env c2;
         Debug.print_str "Second constraint in a conjunction solved"
+
     | CEq (v, w) ->
         debug_unify_before (string "Solving equality constraint.") v w;
         U.unify v w;
         debug_unify_after v
+
     | CExist (v, c) ->
-        (* We assume that the variable [v] has been created fresh, so it
-           is globally unique, it carries no structure, and its rank is
-           [no_rank]. The combinator interface enforces this property. *)
+       (* We assume that the variable [v] has been created fresh, so it is
+          globally unique, it carries no structure, and its rank is [no_rank].
+          The combinator interface enforces this property. *)
         G.register_signatures state v;
         debug "Entering existential with unification variable " (print_var v);
         solve env c;
         debug "Exiting existential with unification variable " (print_var v)
+
     | CInstance (x, w, witnesses_hook) ->
         (* The environment provides a type scheme for [x]. *)
         let s = try XMap.find x env with Not_found -> raise (Unbound x) in
-        (* Flatten nested quantifiers so that all quantifiers get
-           instantiated.  See bug #30. *)
+
+        (* Flatten nested quantifiers so that all quantifiers get instantiated.
+           See bug #30. *)
         let s = G.flatten_outer_foralls s in
-        (* Instantiating this type scheme yields a variable [v], which we unify with
-           [w]. It also yields a list of witnesses, which we record, as they will be
-           useful during the decoding phase. *)
+
+        (* Instantiating this type scheme yields a variable [v], which we unify
+           with [w].  It also yields a list of witnesses, which we record, as
+           they will be useful during the decoding phase. *)
         let witnesses, v = G.instantiate state s in
         WriteOnceRef.set witnesses_hook witnesses;
+
         debug_unify_before (string "Instantiating type scheme for " ^^
           print_tevar x ^^ space ^^ colon ^^ space ^^ print_scheme s ^^ dot ^^
           hardline) v w;
         U.unify v w;
         debug_unify_after v
+
     | CFrozen (x, w) ->
+        (* The environment provides a type scheme for [x]. *)
         let s = try XMap.find x env with Not_found -> raise (Unbound x) in
+
+        (* JSTOLAREK: This flattening is speculative, in a sense that I was
+           unable to construct an example that requires this in order to work
+           correctly.  Moreover, this flattening sort-of cancels out with the
+           conditional below, though it does make sense if several
+           forall-structured variables are nested. *)
+        let s = G.flatten_outer_foralls s in
+
         let qs, body = G.quantifiers s, G.body s in
-        List.iter U.skolemize qs;
+
         (* If the type is quantified we need to create a fresh variable that has
            structure corresponding to the scheme.  If the type isn't quantified
            we just use its body. See bug #30. *)
@@ -213,24 +233,32 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 then let v = fresh (Some (S.forall qs body)) in
                      G.register state v; v
                 else body in
+
+        (* For the purpose of freezing quantifiers are considered skolems so
+           that two distinct quantifiers can't be unified with each other. *)
+        List.iter U.skolemize qs; (* FIXME: segfault here. See #12. *)
+
         debug_unify_before (string "Freezing variable " ^^
           print_tevar x ^^ space ^^ colon ^^ space ^^ print_scheme s ^^ dot ^^
           hardline) v w;
         U.unify v w;
         List.iter U.unskolemize qs;
         debug_unify_after v
+
     | CLet (clet_type, xvss, vs, c1, c2, generalizable_hook) ->
          let generalizing_let = clet_type = CLetGen in
-         let mono_let = clet_type = CLetMono in
+         let mono_let         = clet_type = CLetMono in
 
-        (* Warn the generalization engine that we entering the left-hand side of
-           a [let] construct. *)
+        (* Warn the generalization engine that we are entering the left-hand
+           side of a [let] construct. *)
         G.enter state;
-        (* Register the variables [vs] with the generalization engine, just as if
-           they were existentially bound in [c1]. This is what they are, basically,
-           but they also serve as named entry points. *)
+
+        (* Register the variables [vs] with the generalization engine, just as
+           if they were existentially bound in [c1]. This is what they are,
+           basically, but they also serve as named entry points. *)
         List.iter (G.register state) vs;
 
+        (* Just a chunk of debug output. *)
         begin
           if ( List.length( xvss ) > 0 ) then
             Debug.print (nest 2
@@ -240,12 +268,14 @@ let solve (rectypes : bool) (c : rawco) : unit =
           else
             Debug.print_str "Entering top-level binding"
         end;
-        debug "Let binding type: " (if clet_type = CLetGen
+        debug "Let binding type: " (if generalizing_let
                                     then string "generalising"
                                     else string "monomorphising");
         if Debug.hard then G.show_state "State before solving" state;
+
         (* Solve the constraint [c1]. *)
         solve env c1;
+
         (* Ask the generalization engine to perform an occurs check, to adjust the
            ranks of the type variables in the young generation (i.e., all of the
            type variables that were registered since the call to [G.enter] above),
@@ -259,6 +289,7 @@ let solve (rectypes : bool) (c : rawco) : unit =
         Debug.print (string "Generalizable schemes from the generalization engine: "
                          ^^ print_schemes ss);
         if Debug.hard then G.show_state "State after exiting" state;
+
         (* Check the inferred type scheme against the type annotation or accept
            the inferred type if no annotation present.  Checking algorithm:
 
@@ -268,24 +299,37 @@ let solve (rectypes : bool) (c : rawco) : unit =
 
            - unify body of signature with body of inferred type scheme.  This
              updates type annotations inside the body of a bound term to match
-             the types in the annotation (importantly, it unifies types that
-             should be equal).  If unification fails it means that the type
-             annotation is not an instance of inferred type.
+             the types in the annotation.  Importantly, it unifies types that
+             should be equal, so for example if the annotation says the type
+             should be [forall a. a -> a -> a] and the inferred type is
+             [forall a b. a -> b -> a] then unification ensures all appearences
+             of [b] in the body of bound term are replaced with [a].  If
+             unification fails it means that the type annotation is not an
+             instance of inferred type.
 
            - unskolemize variables in the type signature
          *)
         let ss, generalizable = List.fold_right2
          (fun s (_, annotation, _) (ss, generalizable) ->
             if ( U.has_structure annotation ) then
+              (* Type annotation present.  Check the inferred type against the
+                 signature. *)
               begin
+                (* We'll be unifying the signature with inferred type so we need
+                   to ensure that all variables in the signature are correctly
+                   registered. *)
+                (* FIXME: this line seems redundant, i.e. commenting it causes
+                   no test failures.  Pay special attention to this when
+                   implementing #38.  The code here will likely go away. *)
                 G.register_signatures state annotation;
                 Debug.print (nest 2
-                  ((if clet_type = CLetGen
+                  ((if generalizing_let
                     then string "Generalizable let-binder "
                     else string "Monomorphising let-binder ") ^^
                    string "with type annotation:" ^^ hardline ^^
                    string "Annotation: " ^^ print_var annotation ^^ hardline ^^
                    string "Inferred  : " ^^ print_scheme s) );
+
                 let annotation_scheme = G.scheme annotation in
                 List.iter U.skolemize (G.quantifiers annotation_scheme);
                 debug_unify_before
@@ -294,19 +338,23 @@ let solve (rectypes : bool) (c : rawco) : unit =
                 U.unify (G.body annotation_scheme) (G.body s); (* See #2 *)
                 debug_unify_after (G.body annotation_scheme);
                 List.iter U.unskolemize (G.quantifiers annotation_scheme);
+
                 let generalizable =
                   if generalizing_let
-                  then G.quantifiers annotation_scheme
+                  then
+                    (* When a type annotation is present we discard
+                       generalizable variables from the generalization engine
+                       and use quantifiers from the provided type signature. *)
+                    G.quantifiers annotation_scheme
                   else
+                    (* For non-generalizing lets we obviously don't generalize
+                       anything. *)
                     begin
                       G.assert_variables_equal (G.quantifiers s)
                         (G.quantifiers annotation_scheme);
                       assert (generalizable = []);
                       []
                     end in
-                (* When a type annotation is present we discard generalizable
-                   variables from the generalization engine and use quantifiers
-                   from the provided type signature. *)
                 annotation_scheme :: ss, generalizable
               end
             else
@@ -317,8 +365,13 @@ let solve (rectypes : bool) (c : rawco) : unit =
                     else string "Monomorphising let-binder ") ^^
                    string "without type annotation:" ^^ hardline ^^
                    string "Inferred type : " ^^ print_scheme s) );
+
                 if mono_let
                 then
+                  (* FIXME: this code does not correctly implement semantics of
+                     let mono constraints, as it monomorphises the quantifiers
+                     instead of discarding them.  See #30.  This code will
+                     likely have to be rewritten as part of #38. *)
                   begin
                     let ftvs        = G.unbound_tyvars s in
                     let quantifiers = G.quantifiers s in
@@ -331,7 +384,13 @@ let solve (rectypes : bool) (c : rawco) : unit =
                               ^^ print_scheme s);
                     List.iter U.monomorphize quantifiers
                   end
-                else List.iter U.unmonomorphize generalizable;
+                else
+                  (* JSTOLAREK: this removes the monomorphic restriction from
+                     the quantifiers in a generalizing let, but I can't remember
+                     why we have to do this, i.e. what chain of events leads to
+                     quantifiers becoming monomorphic in a generalising let.  *)
+                  List.iter U.unmonomorphize generalizable;
+
                 s :: ss, generalizable
               end
           ) ss xvss ([], generalizable) in
@@ -358,6 +417,9 @@ let solve (rectypes : bool) (c : rawco) : unit =
            (assuming that mutable hash has constant access time) but
            `remove_from_pool` will actually do any work only if there are
            variables to be removed.  *)
+        (* FIXME: this part of code relies on several functions that look like
+           hacks, which is an indicator that this is likely not a good way of
+           doing things.  See #41. *)
         List.iter (fun s ->
             if (not (G.has_quantifiers s)) then
               begin
@@ -370,8 +432,8 @@ let solve (rectypes : bool) (c : rawco) : unit =
                from the pool but it might be the case that some nested tyvars
                make it into the pool, in which case they also should be removed.
                For now I have not run into this in practice. *)
-            (* FIXME: at the moment it seems that commenting out this function
-               doesnt't make any difference.  See #41 *)
+            (* FIXME: at the moment it seems that commenting out a call to
+               [remove_from_pool] doesnt't make any difference.  See #41 *)
             G.remove_from_pool state (G.toplevel_generic_variables (G.body s));
             Debug.print (string "Unbound generic variables rank fix: " ^^
                            print_scheme s)
@@ -390,6 +452,12 @@ let solve (rectypes : bool) (c : rawco) : unit =
             WriteOnceRef.set scheme_hook s;
             Debug.print (string "  " ^^ print_tevar x ^^ space ^^ colon ^^
                                space ^^ print_scheme s);
+            (* FIXME: first assertion is only true with the current incorrect
+               semantic of let mono constraints (see #35).  After we rewrite the
+               code as part of #38 make sure to revisit this assertion to make
+               sure all is fine and just delete this comment.  Note also that at
+               the moment this is the only place where [all_generic_vars_bound]
+               is used in the code. *)
             assert (G.all_generic_vars_bound s);
             List.iter (fun q -> assert (not (U.has_structure q));
                                 assert (U.rank q = U.generic))

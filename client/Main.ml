@@ -962,7 +962,7 @@ let bad3 =
   }
 
 (* term               : λ(bot : ∀ a. a). let f = bot bot in (poly ~f, f 1)
-   inferred type      : None
+   inferred type      : X
  *)
 let bad3_no_value_restriction =
   { name = "bad3_no_value_restriction"
@@ -1810,7 +1810,7 @@ let fml_mixed_prefix_2 =
    type: Int
 *)
 let fml_mixed_prefix_2_no_sig =
-  { name = "mixed_prefix_2"
+  { name = "mixed_prefix_2_no_sig"
   ; term = ML.Let ( "x"
                   , Some (TyForall (1, TyArrow (TyForall (2, TyArrow (TyVar 2, TyVar 1)), TyInt)))
                   , ML.Abs ( "y", Some( TyForall(2, TyArrow (TyVar 2, TyVar 1))), one)
