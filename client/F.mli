@@ -16,7 +16,6 @@
 
 
 open Shared
-open Shared.Result
 
 (* -------------------------------------------------------------------------- *)
 
@@ -104,6 +103,6 @@ val subst: debruijn_type -> DeBruijn.index -> debruijn_type -> debruijn_type
 
 (* Translation of nominal terms to de Bruijn terms. *)
 
-val translate: nominal_term -> debruijn_term Result.t
+val translate: nominal_term -> debruijn_term Tc_result.t
 
 val decode_tyvar : nominal_type -> tyvar

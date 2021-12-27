@@ -15,7 +15,6 @@
 open Client
 open F
 open Shared
-open Shared.Result
 
 let verbose =
   false
@@ -92,7 +91,7 @@ let attempt log msg f x =
            Printf.fprintf stdout "%s" (Printexc.get_backtrace ());
          )
     end;
-    Result.ImplementationBug
+    Tc_result.ImplementationBug
 
 (* -------------------------------------------------------------------------- *)
 
@@ -110,7 +109,7 @@ let print_types tys =
 (* A wrapper over the client's [translate] function. *)
 let translate log (t, value_restriction) =
   try
-    Result.WellTyped (Client.translate value_restriction t)
+    Tc_result.WellTyped (Client.translate value_restriction t)
   with
   | Client.Cycle ty ->
      log_action log (fun () ->

@@ -1,6 +1,5 @@
 open F
 open Shared
-open Shared.Result
 
 (* -------------------------------------------------------------------------- *)
 
@@ -182,4 +181,4 @@ let rec typeof env (t : debruijn_term) : debruijn_type =
   | Bool _ -> TyBool
 
 let typeof t =
-  Result.WellTyped (typeof empty t)
+  Tc_result.WellTyped (typeof empty t)

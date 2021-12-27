@@ -1,6 +1,5 @@
 open F
 open Shared
-open Shared.Result
 
 (* A type-checker for System F. *)
 
@@ -11,5 +10,4 @@ exception NotAProduct  of debruijn_type
 exception NotAForall   of debruijn_type
 exception TypeMismatch of debruijn_type * debruijn_type
 
-val typeof: debruijn_term -> debruijn_type Result.t
-
+val typeof: debruijn_term -> debruijn_type Tc_result.t
