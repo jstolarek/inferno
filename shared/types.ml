@@ -7,11 +7,8 @@ type ('a, 'b) typ =
   | TyInt
   | TyBool
 
-type tyvar =
-    int
+type tyvar = int
 
-type nominal_type =
-    (tyvar, tyvar) typ
+type nominal_type = (tyvar, tyvar) typ
 
-type debruijn_type =
-    (DeBruijn.index, unit) typ
+type debruijn_type = (DeBruijn.index, unit) typ

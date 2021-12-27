@@ -1,4 +1,5 @@
-type ty    = Types.nominal_type
+type ty = Types.nominal_type
+
 type tevar = string
 
 (* Fresh tevar names *)
@@ -6,10 +7,10 @@ let fresh_tevar =
   let postincrement r =
     let v = !r in
     r := v + 1;
-    v in
+    v
+  in
   let counter = ref 0 in
-  fun () ->
-  "_x" ^ string_of_int (postincrement counter)
+  fun () -> "_x" ^ string_of_int (postincrement counter)
 
 type term =
   | Var of tevar
