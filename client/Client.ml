@@ -16,6 +16,7 @@
    it down to a fragment of System F. *)
 
 (* -------------------------------------------------------------------------- *)
+open Shared
 
 (* The unifier will use the following type structure. *)
 
@@ -123,14 +124,13 @@ end
 
 module O = struct
 
-  type tyvar =
-    int
+  type tyvar = Types.tyvar
 
   type 'a structure =
     'a S.structure
 
   type ty =
-    F.nominal_type
+    Types.nominal_type
 
   module TyVarMap = Map.Make(struct type t = int let compare = compare end)
 
@@ -174,32 +174,7 @@ module O = struct
     F.TyMu (x, t)
 end
 
-module ML = struct
-  type ty    = O.ty
-  type tevar = string
-
-  (* Fresh tevar names *)
-  let fresh_tevar =
-    let postincrement r =
-      let v = !r in
-      r := v + 1;
-      v in
-    let counter = ref 0 in
-    fun () ->
-    "_x" ^ string_of_int (postincrement counter)
-
-  type term =
-    | Var of tevar
-    | FrozenVar of tevar
-    | Abs of tevar * ty option * term
-    | App of term * term
-    | Let of tevar * ty option * term * term
-    | Pair of term * term
-    | Proj of int * term
-    | Int of int
-    | Bool of bool
-
-end
+module ML = Shared.Ml
 
 (* -------------------------------------------------------------------------- *)
 

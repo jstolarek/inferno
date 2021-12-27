@@ -14,7 +14,9 @@
 
 (* This is the target calculus of the sample client. It is a core System F. *)
 
-open Result
+
+open Shared
+open Shared.Result
 
 (* -------------------------------------------------------------------------- *)
 
@@ -30,7 +32,7 @@ open Result
    while the de Bruijn representation is more convenient when type-checking
    F. *)
 
-type ('a, 'b) typ =
+type ('a, 'b) typ = ('a, 'b) Types.typ =
   | TyVar of 'a
   | TyArrow of ('a, 'b) typ * ('a, 'b) typ
   | TyProduct of ('a, 'b) typ * ('a, 'b) typ

@@ -1,0 +1,5 @@
+(library
+  (name shared)
+  (public_name inferno.shared)
+  (libraries)
+)

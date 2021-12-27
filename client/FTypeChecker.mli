@@ -1,5 +1,6 @@
 open F
-open Result
+open Shared
+open Shared.Result
 
 (* A type-checker for System F. *)
 

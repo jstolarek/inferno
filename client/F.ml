@@ -16,6 +16,8 @@
 
 (* -------------------------------------------------------------------------- *)
 
+open Shared
+
 (* Types. *)
 
 (* We include recursive types [FTyMu] in the target calculus, not only because
@@ -28,7 +30,7 @@
    while the de Bruijn representation is more convenient when type-checking
    F. *)
 
-type ('a, 'b) typ =
+type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
   | TyVar of 'a
   | TyArrow of ('a, 'b) typ * ('a, 'b) typ
   | TyProduct of ('a, 'b) typ * ('a, 'b) typ
