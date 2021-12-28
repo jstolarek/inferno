@@ -14,6 +14,7 @@
 
 (* A pretty-printer for F. *)
 
+open Shared
 open PPrint
 open F
 
@@ -62,10 +63,17 @@ let rec print_type_aux level ty =
         print_type_aux 3 ty1
       else
         parens (print_type ty)
-  | TyInt ->
-     string "Int"
-  | TyBool ->
-     string "Bool"
+  | TyConstrApp (constr, args) ->
+    if level >= 3 then
+        let name = string (Types.Type_constr.show constr) in
+        match args with
+        | [] -> name
+        | args ->
+          name ^^ space ^^ lbracket ^^
+          List.fold_left (fun fmted arg -> fmted ^^ print_type_aux 3 arg ^^ string ", " ) empty args ^^
+          rbracket
+      else
+        parens (print_type ty)
 
 and print_type ty =
   print_type_aux 3 ty
@@ -105,10 +113,18 @@ let rec print_debruijn_type_aux level ty =
         print_debruijn_type_aux 3 ty1
       else
         parens (print_debruijn_type ty)
-  | TyInt ->
-     string "Int"
-  | TyBool ->
-     string "Bool"
+  | TyConstrApp (constr, args) ->
+    if level >= 3 then
+      let name = string (Types.Type_constr.show constr) in
+      match args with
+      | [] -> name
+      | args ->
+        name ^^ space ^^ lbracket ^^
+        List.fold_left (fun fmted arg -> fmted ^^ print_debruijn_type_aux 3 arg ^^ string ", " ) empty args ^^
+        rbracket
+    else
+      parens (print_debruijn_type ty)
+
 
 and print_debruijn_type ty =
   print_debruijn_type_aux 3 ty

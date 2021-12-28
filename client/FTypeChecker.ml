@@ -135,12 +135,15 @@ let rec equal budget ty1 ty2 =
       equal budget ty1a ty2a && equal budget ty1b ty2b
   | TyForall ((), ty1), TyForall ((), ty2) ->
       equal budget ty1 ty2
-  | TyInt, TyInt ->
-      true
-  | TyBool, TyBool ->
-      true
-  | _, _ ->
-      false
+  | TyConstrApp (constr1, args1), TyConstrApp (constr2, args2) ->
+    let args_match =
+      List.fold_left2
+        (fun prev arg1 arg2 -> prev && equal budget arg1 arg2)
+        true
+        args1
+        args2 in
+    Types.Type_constr.equal constr1 constr2 && args_match
+  | _ -> false
 
 let budget =
   4
@@ -177,8 +180,8 @@ let rec typeof env (t : debruijn_term) : debruijn_type =
       assert (i = 1 || i = 2);
       let ty1, ty2 = as_product (typeof env t) in
       if i = 1 then ty1 else ty2
-  | Int _ -> TyInt
-  | Bool _ -> TyBool
+  | Int _ -> Types.int_t
+  | Bool _ -> Types.bool_t
 
 let typeof t =
   Tc_result.WellTyped (typeof empty t)

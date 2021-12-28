@@ -36,8 +36,7 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
   | TyProduct of ('a, 'b) typ * ('a, 'b) typ
   | TyForall of 'b * ('a, 'b) typ
   | TyMu of 'b * ('a, 'b) typ
-  | TyInt
-  | TyBool
+  | TyConstrApp of Types.Type_constr.t * ('a, 'b) typ list
 
 type tyvar = int
 
@@ -53,8 +52,12 @@ let rec string_of_typ (t : nominal_type)  =
   | TyProduct (a, b) -> "(" ^ string_of_typ a ^ "×" ^ string_of_typ b ^ ")"
   | TyForall (q, t) -> "∀ " ^ string_of_int q ^ ". " ^ string_of_typ t
   | TyMu (q, t) -> "μ " ^ string_of_int q ^ ". " ^ string_of_typ t
-  | TyInt -> "Int"
-  | TyBool -> "Bool"
+  | TyConstrApp (constr, []) -> Types.Type_constr.show constr
+  | TyConstrApp (constr, args) ->
+    let c_name = Types.Type_constr.show constr in
+    let arg_strings = List.map string_of_typ args in
+    c_name ^ " [" ^ String.concat ", " arg_strings ^ "]"
+
 
 
 (* -------------------------------------------------------------------------- *)
@@ -151,8 +154,9 @@ module TypeInType : DeBruijn.TRAVERSE
         let env, x = extend env x in
         let ty1' = traverse lookup extend env ty1 in
         TyMu (x, ty1')
-    | TyInt -> TyInt
-    | TyBool -> TyBool
+    | TyConstrApp (constr, args) ->
+      let args = List.map (traverse lookup extend env) args in
+      TyConstrApp (constr, args)
 
 end
 

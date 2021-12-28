@@ -37,8 +37,7 @@ type ('a, 'b) typ = ('a, 'b) Types.typ =
   | TyProduct of ('a, 'b) typ * ('a, 'b) typ
   | TyForall of 'b * ('a, 'b) typ
   | TyMu of 'b * ('a, 'b) typ
-  | TyInt
-  | TyBool
+  | TyConstrApp of Types.Type_constr.t * ('a, 'b) typ list
 
 type tyvar =
     int

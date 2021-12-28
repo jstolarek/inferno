@@ -1,5 +1,6 @@
 (library
   (name shared)
   (public_name inferno.shared)
-  (libraries)
+  (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
+  (libraries core)
 )

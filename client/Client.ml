@@ -26,9 +26,10 @@ module S = struct
     | TyArrow of 'a * 'a
     | TyProduct of 'a * 'a
     | TyForall of 'a list * 'a
-    (* Arbitrary ground types to allow writing concrete examples *)
-    | TyInt
-    | TyBool
+    | TyConstrApp of Types.Type_constr.t * 'a list
+
+  let int_t = TyConstrApp ((Types.Type_constr.int), [])
+  let bool_t = TyConstrApp ((Types.Type_constr.bool), [])
 
   let forall qs t =
     TyForall (qs, t)
@@ -55,8 +56,7 @@ module S = struct
         let qs = List.map f qs in
         let t  = f t in
         TyForall (qs, t)
-    | TyInt -> TyInt
-    | TyBool -> TyBool
+    | TyConstrApp (constr, args) -> TyConstrApp (constr, (List.map f args))
 
   let fold f t accu =
     match t with
@@ -68,8 +68,9 @@ module S = struct
     | TyForall (qs, t) ->
         let accu = List.fold_left (fun accu q -> f q accu) accu qs in
         f t accu
-    | TyInt -> accu
-    | TyBool -> accu
+    | TyConstrApp (_, args) ->
+      List.fold_left (fun accu arg -> f arg accu) accu args
+
 
   let iter f t =
     let _ = map f t in
@@ -91,8 +92,10 @@ module S = struct
        if (List.length qs1 != List.length qs2) then raise Iter2;
        List.iter2 f qs1 qs2;
        f t1 t2
-    | TyInt, TyInt -> ()
-    | TyBool, TyBool -> ()
+    | TyConstrApp (constr1, args1), TyConstrApp (constr2, args2) ->
+      if not (Types.Type_constr.equal constr1 constr2)
+          ||  (List.length args1 != List.length args2) then raise Iter2;
+      List.iter2 f args1 args2;
     | _, _ ->
         raise Iter2
 
@@ -112,8 +115,12 @@ module S = struct
        rbracket ^^
        dot ^^ space ^^
        f fuel t
-    | TyInt -> string "Int"
-    | TyBool -> string "Bool"
+    | TyConstrApp (constr, []) -> string (Types.Type_constr.show constr)
+    | TyConstrApp (constr, args) ->
+      string (Types.Type_constr.show constr) ^^ space ^^ lbracket ^^
+      List.fold_left (fun fmted arg -> fmted ^^ f fuel arg ^^ string ", ") empty args ^^
+      rbracket
+
 
 end
 
@@ -155,8 +162,8 @@ module O = struct
         F.TyProduct (t1, t2)
     | S.TyForall (qs, t) ->
         List.fold_right (fun q t -> F.TyForall (F.decode_tyvar q, t)) qs t
-    | S.TyInt -> F.TyInt
-    | S.TyBool -> F.TyBool
+    | S.TyConstrApp (constr, args) ->
+      F.TyConstrApp (constr, args)
 
   let to_variable fresh_tycon fresh callback (env : 'a TyVarMap.t) (body : ty) :
         'a =
@@ -165,8 +172,8 @@ module O = struct
       | F.TyArrow   (ty1, ty2) -> fresh (S.TyArrow   (go ty1, go ty2))
       | F.TyProduct (ty1, ty2) -> fresh (S.TyProduct (go ty1, go ty2))
       | F.TyForall _           -> callback ty
-      | F.TyInt                -> fresh_tycon S.TyInt
-      | F.TyBool               -> fresh_tycon S.TyBool
+      | F.TyConstrApp (constr, args) ->
+        fresh_tycon (S.TyConstrApp (constr, (List.map go args)))
       | F.TyMu _               -> assert false
     in go body
 
@@ -241,10 +248,10 @@ let rec hastype (value_restriction : bool) (env : int list) (t : ML.term)
   match t with
 
   | ML.Int x ->
-     w --- S.TyInt <$$> fun () -> F.Int x
+     w --- S.int_t <$$> fun () -> F.Int x
 
   | ML.Bool b ->
-     w --- S.TyBool <$$> fun () -> F.Bool b
+     w --- S.bool_t <$$> fun () -> F.Bool b
 
     (* Variable. *)
   | ML.Var x ->
