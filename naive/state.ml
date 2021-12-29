@@ -22,6 +22,9 @@ module Stack = struct
         Forall (List.append vars vars') :: stack'
     | _ -> new_frame :: stack
 
+  let merge upper_stack lower_stack =
+    List.fold_right ~f:(Fn.flip push) ~init:lower_stack upper_stack
+
   module Invariants = struct
     exception Bad_stack of string
 
@@ -91,7 +94,9 @@ let is_final s =
 
 let with_constraint state constr = { state with cnstrnt = constr }
 
-let invalidate_caches state = let open Stack in function
+let invalidate_caches state =
+  let open Stack in
+  function
   | Def _ -> { state with tevar_env = None }
   | Forall _ -> { state with rigid_vars = None }
   | _ -> state
@@ -103,12 +108,15 @@ let push_and_set_constraint state new_frame new_constraint =
 
 let pop_and_set_constraint state constr =
   match state.stack with
-    | frame :: stack ->
-      let state = {state with stack; cnstrnt = constr} in
+  | frame :: stack ->
+      let state = { state with stack; cnstrnt = constr } in
       invalidate_caches state frame
-    | _ -> failwith "illegal argument"
+  | _ -> failwith "illegal argument"
 
 let with_flex_mono_vars state flex_mono_vars = { state with flex_mono_vars }
 
 let with_unifier_state state flex_mono_vars subst =
   { state with flex_mono_vars; subst }
+
+let with_stack state stack =
+  { state with stack; tevar_env = None; rigid_vars = None }

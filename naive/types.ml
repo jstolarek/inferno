@@ -11,19 +11,25 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
 type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ
 type restriction = Mono | Poly
 
-let rec free_flexible_variables ty to_ignore =
-  let ftv ty = free_flexible_variables ty to_ignore in
+
+
+let rec free_type_variables_ordered ty to_ignore =
+  let ftv t = free_type_variables_ordered t to_ignore in
   match ty with
   | TyVar v ->
-      if Set.mem to_ignore v then Tyvar.empty_set else Tyvar.singleton_set v
-  | TyArrow (t1, t2) | TyProduct (t1, t2) -> Set.union (ftv t1) (ftv t2)
+      if Set.mem to_ignore v then [] else [v]
+  | TyArrow (t1, t2) | TyProduct (t1, t2) -> List.append (ftv t1) (ftv t2)
   | TyForall (v, t') | TyMu (v, t') ->
       let to_ignore = Set.add to_ignore v in
-      free_flexible_variables t' to_ignore
+      free_type_variables_ordered t' to_ignore
   | TyConstrApp (_constr, args) ->
       List.fold_left
-        ~f:(fun set arg -> Set.union set (ftv arg))
-        ~init:Tyvar.empty_set args
+        ~f:(fun ftvs arg -> List.append ftvs (ftv arg))
+        ~init:[] args
+
+(* TODO: rename this to free_type_variables *)
+let rec free_flexible_variables ty to_ignore =
+  Tyvar.Set.of_list (free_type_variables_ordered ty to_ignore)
 
 let is_monomorphic ty rigid_vars flex_mono_vars =
   let rec is_mono ty all_mono_vars =
@@ -95,3 +101,6 @@ let freshen_quantifiers ty =
       ~init:Subst.empty qs fresh_qs
   in
   (fresh_qs, Subst.apply subst h)
+
+let forall vars ty =
+  List.fold_right ~f:(fun v ty ->  TyForall (v, ty)) ~init:ty vars

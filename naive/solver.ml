@@ -64,10 +64,29 @@ let handle_constraint state =
       Result.Ok (State.with_constraint state constr)
   | True -> assert false
 
+let split vars subst =
+  let vars_set = Tyvar.Set.of_list vars in
+  let outer_ftvs =
+    Map.fold
+      ~f:(fun ~key ~data ftvs ->
+        if Tyvar.Set.mem vars_set key then ftvs
+        else
+          let new_ftvs = Types.free_flexible_variables data Tyvar.Set.empty in
+          Tyvar.Set.union ftvs new_ftvs)
+      ~init:Tyvar.Set.empty subst
+  in
+  let not_referenced_by_outer var = not (Tyvar.Set.mem outer_ftvs var) in
+  List.partition_tf ~f:not_referenced_by_outer vars
+
 let handle_stack state =
   let stack = state.State.stack in
   let pop_and_set c = Result.Ok (State.pop_and_set_constraint state c) in
-  let handle_let_frame vars restr tevar tyvar c2 = failwith "todo" in
+  let with_stack = Fn.flip State.with_stack in
+  let with_constraint = Fn.flip State.with_constraint in
+  let with_unifier_state vars subst stack =
+    State.with_unifier_state state vars subst
+  in
+
   match ([], stack) with
   (* S-ConjPop *)
   | _, Conj c2 :: _ -> pop_and_set c2
@@ -85,13 +104,50 @@ let handle_stack state =
       if any_escapes then Result.Error Tc_errors.Unification_quantifier_escape
       else pop_and_set Constraint.True
   (* S-Let[Poly|Mono]Pop*)
-  | _, Exists vars :: Let (restr, tevar, tyvar, c2) :: _
-  | vars, Let (restr, tevar, tyvar, c2) :: _ ->
-      handle_let_frame vars restr tevar tyvar c2
+  | _, Exists vars :: Let (restr, tevar, tyvar, c2) :: stack'
+  | vars, Let (restr, tevar, tyvar, c2) :: stack' ->
+      let to_remove, referenced_vars = split (tyvar :: vars) state.subst in
+      let to_remove = Tyvar.Set.of_list to_remove in
+
+      let c1_ty = Types.Subst.apply state.subst (TyVar tyvar) in
+      let c1_ty_fftv =
+        Types.free_type_variables_ordered c1_ty (State.rigid_vars state)
+      in
+      let generalizable = List.filter c1_ty_fftv ~f:(Tyvar.Set.mem to_remove) in
+
+      let to_remove, var_type =
+        match restr with
+        | Mono -> (Set.diff to_remove (Tyvar.Set.of_list generalizable), c1_ty)
+        | Poly -> (to_remove, Types.forall generalizable c1_ty)
+      in
+
+      let mono_vars = Tyvar.Set.diff state.flex_mono_vars to_remove in
+      let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
+
+      let stack = State.Stack.merge [ Exists referenced_vars ] stack' in
+      let state =
+        with_stack stack state
+        |> with_unifier_state mono_vars subst
+        |> with_constraint (Constraint.Def (tevar, var_type, c2))
+      in
+      Result.Ok state
   | _, Exists _ :: Exists _ :: _ -> failwith "ill-formed stack"
   (* S-ExistsLower *)
-  | _, Exists _vars :: _ -> failwith "todo"
-  | _, [] -> failwith "illegal stack"
+  | _, Exists vars :: lower_frame :: stack' ->
+      let to_remove, referenced_vars = split vars state.subst in
+      let to_remove = Tyvar.Set.of_list to_remove in
+
+      let mono_vars = Tyvar.Set.diff state.flex_mono_vars to_remove in
+      let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
+
+      let stack =
+        State.Stack.merge [ lower_frame; Exists referenced_vars ] stack'
+      in
+      let state =
+        with_stack stack state |> with_unifier_state mono_vars subst
+      in
+      Result.Ok state
+  | _, [ Exists _ ] | _, [] -> failwith "state is already final"
 
 let perform_step state =
   assert (not (State.is_final state));
