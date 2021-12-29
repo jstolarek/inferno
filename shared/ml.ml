@@ -1,6 +1,9 @@
+open Core
+
 type ty = Types.nominal_type
 
-type tevar = string
+
+type tevar = string [@@deriving compare, eq, sexp]
 
 (* Fresh tevar names *)
 let fresh_tevar =

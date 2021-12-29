@@ -33,7 +33,7 @@ type ('a, 'b) typ =
   | TyMu of 'b * ('a, 'b) typ
   | TyConstrApp of Type_constr.t * ('a, 'b) typ list
 
-type tyvar = int
+type tyvar = int [@@deriving compare, eq, sexp]
 
 type nominal_type = (tyvar, tyvar) typ
 
