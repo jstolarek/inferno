@@ -41,7 +41,7 @@ type tyvar_set = Tyvar.Set.t
 type t = {
   stack : Stack.t;
   flex_mono_vars : tyvar_set;
-  subst : Subst.t;
+  subst : Types.Subst.t;
   cnstrnt : Constraint.t;
   (* cached information that can be obtained from earlier fields *)
   mutable rigid_vars : Tyvar.set option;
@@ -78,7 +78,7 @@ let empty cnstrnt =
   {
     stack = [];
     flex_mono_vars = Tyvar.Set.empty;
-    subst = Subst.empty;
+    subst = Types.Subst.empty;
     cnstrnt;
     rigid_vars = None;
     tevar_env = None;
@@ -91,13 +91,22 @@ let is_final s =
 
 let with_constraint state constr = { state with cnstrnt = constr }
 
+let invalidate_caches state = let open Stack in function
+  | Def _ -> { state with tevar_env = None }
+  | Forall _ -> { state with rigid_vars = None }
+  | _ -> state
+
 let push_and_set_constraint state new_frame new_constraint =
   let new_stack = Stack.push state.stack new_frame in
   let new_state = { state with stack = new_stack; cnstrnt = new_constraint } in
-  match new_frame with
-  | Def _ -> { new_state with tevar_env = None }
-  | Forall _ -> { new_state with rigid_vars = None }
-  | _ -> new_state
+  invalidate_caches new_state new_frame
+
+let pop_and_set_constraint state constr =
+  match state.stack with
+    | frame :: stack ->
+      let state = {state with stack; cnstrnt = constr} in
+      invalidate_caches state frame
+    | _ -> failwith "illegal argument"
 
 let with_flex_mono_vars state flex_mono_vars = { state with flex_mono_vars }
 

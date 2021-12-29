@@ -40,14 +40,6 @@ let is_monomorphic ty rigid_vars flex_mono_vars =
   in
   is_mono ty (Set.union rigid_vars flex_mono_vars)
 
-(* Assuming iso-recursive types here, where mu types need to be explicitly
-   unrolled to yield forall type *)
-let rec split_toplevel_quantifiers = function
-  | TyForall (q, ty) ->
-      let qs', ty' = split_toplevel_quantifiers ty in
-      (q :: qs', ty')
-  | ty -> ([], ty)
-
 module Subst = struct
   type nonrec t = (Tyvar.t, t, Tyvar.comparator_witness) Map.t
 
@@ -80,14 +72,26 @@ module Subst = struct
       | TyConstrApp (constr, args) -> TyConstrApp (constr, List.map ~f:app args)
 
   let singleton var ty = Map.singleton (module Tyvar) var ty
+
+  let range_contains subst rigid_vars var =
+    let ftv ty = free_flexible_variables ty rigid_vars in
+    Map.exists subst ~f:(fun ty -> Tyvar.Set.mem (ftv ty) var)
 end
+
+(* Assuming iso-recursive types here, where mu types need to be explicitly
+   unrolled to yield forall type *)
+let rec split_toplevel_quantifiers = function
+  | TyForall (q, ty) ->
+      let qs', ty' = split_toplevel_quantifiers ty in
+      (q :: qs', ty')
+  | ty -> ([], ty)
 
 let freshen_quantifiers ty =
   let qs, h = split_toplevel_quantifiers ty in
-  let fresh_qs = List.map ~f:(fun _ -> TyVar (Tyvar.fresh_tyvar ())) qs in
+  let fresh_qs = List.map ~f:(fun _ -> Tyvar.fresh_tyvar ()) qs in
   let subst =
     List.fold2_exn
-      ~f:(fun subst old_q new_q -> Subst.set subst old_q new_q)
+      ~f:(fun subst old_q new_q -> Subst.set subst old_q (TyVar new_q))
       ~init:Subst.empty qs fresh_qs
   in
   (fresh_qs, Subst.apply subst h)
