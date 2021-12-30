@@ -106,23 +106,29 @@ let handle_stack state =
   (* S-Let[Poly|Mono]Pop*)
   | _, Exists vars :: Let (restr, tevar, tyvar, c2) :: stack'
   | vars, Let (restr, tevar, tyvar, c2) :: stack' ->
-      let to_remove, referenced_vars = split (tyvar :: vars) state.subst in
-      let to_remove = Tyvar.Set.of_list to_remove in
+      let non_referenced, referenced = split (tyvar :: vars) state.subst in
+      let non_referenced = Tyvar.Set.of_list non_referenced in
 
       let c1_ty = Types.Subst.apply state.subst (TyVar tyvar) in
       let c1_ty_fftv = Types.ftv_ordered c1_ty (State.rigid_vars state) in
-      let generalizable = List.filter c1_ty_fftv ~f:(Set.mem to_remove) in
+      let generalizable = List.filter c1_ty_fftv ~f:(Set.mem non_referenced) in
 
-      let to_remove, var_type =
+      let to_remove, to_quantify_ex, var_type =
         match restr with
-        | Mono -> (Set.diff to_remove (Tyvar.Set.of_list generalizable), c1_ty)
-        | Poly -> (to_remove, Types.forall generalizable c1_ty)
+        | Mono ->
+            ( Set.diff non_referenced (Tyvar.Set.of_list generalizable),
+              referenced,
+              c1_ty )
+        | Poly ->
+            ( non_referenced,
+              List.append generalizable referenced,
+              Types.forall generalizable c1_ty )
       in
 
       let mono_vars = Set.diff state.flex_mono_vars to_remove in
       let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
 
-      let stack = State.Stack.merge [ Exists referenced_vars ] stack' in
+      let stack = State.Stack.merge [ Exists to_quantify_ex ] stack' in
       let state =
         with_stack stack state
         |> with_unifier_state mono_vars subst
