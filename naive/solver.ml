@@ -101,7 +101,7 @@ let handle_stack state =
             Types.Subst.range_contains state.subst Tyvar.Set.empty var)
           vars
       in
-      if any_escapes then Result.Error Tc_errors.Unification_quantifier_escape
+      if any_escapes then Result.Error Tc_errors.Quantifier_escape
       else pop_and_set Constraint.True
   (* S-Let[Poly|Mono]Pop*)
   | _, Exists vars :: Let (restr, tevar, tyvar, c2) :: stack'

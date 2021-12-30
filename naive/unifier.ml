@@ -47,7 +47,7 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
 
       let check_escape ((new_flex_mono_vars, new_subst) as result) =
         let escapes = Types.Subst.range_contains new_subst rigid_vars fresh in
-        if escapes then Result.Error Tc_errors.Unification_quantifier_escape
+        if escapes then Result.Error Tc_errors.Quantifier_escape
         else Result.Ok result
       in
       let rigid_vars = Set.add rigid_vars fresh in
