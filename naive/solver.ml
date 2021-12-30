@@ -23,7 +23,7 @@ let handle_constraint state =
   (* S-DefPush*)
   | Constraint.Def (var, ty, c) ->
       let rigid_vars = State.rigid_vars state in
-      let free_flexible = Types.free_flexible_variables ty rigid_vars in
+      let free_flexible = Types.ftv ty rigid_vars in
       let flex_mono_vars = Set.union state.flex_mono_vars free_flexible in
       let can_demote_all_ftv =
         Types.Subst.can_demote state.subst rigid_vars flex_mono_vars
@@ -69,13 +69,13 @@ let split vars subst =
   let outer_ftvs =
     Map.fold
       ~f:(fun ~key ~data ftvs ->
-        if Tyvar.Set.mem vars_set key then ftvs
+        if Set.mem vars_set key then ftvs
         else
-          let new_ftvs = Types.free_flexible_variables data Tyvar.Set.empty in
+          let new_ftvs = Types.ftv data Tyvar.Set.empty in
           Tyvar.Set.union ftvs new_ftvs)
       ~init:Tyvar.Set.empty subst
   in
-  let not_referenced_by_outer var = not (Tyvar.Set.mem outer_ftvs var) in
+  let not_referenced_by_outer var = not (Set.mem outer_ftvs var) in
   List.partition_tf ~f:not_referenced_by_outer vars
 
 let handle_stack state =
@@ -110,10 +110,8 @@ let handle_stack state =
       let to_remove = Tyvar.Set.of_list to_remove in
 
       let c1_ty = Types.Subst.apply state.subst (TyVar tyvar) in
-      let c1_ty_fftv =
-        Types.free_type_variables_ordered c1_ty (State.rigid_vars state)
-      in
-      let generalizable = List.filter c1_ty_fftv ~f:(Tyvar.Set.mem to_remove) in
+      let c1_ty_fftv = Types.ftv_ordered c1_ty (State.rigid_vars state) in
+      let generalizable = List.filter c1_ty_fftv ~f:(Set.mem to_remove) in
 
       let to_remove, var_type =
         match restr with
@@ -121,7 +119,7 @@ let handle_stack state =
         | Poly -> (to_remove, Types.forall generalizable c1_ty)
       in
 
-      let mono_vars = Tyvar.Set.diff state.flex_mono_vars to_remove in
+      let mono_vars = Set.diff state.flex_mono_vars to_remove in
       let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
 
       let stack = State.Stack.merge [ Exists referenced_vars ] stack' in
@@ -137,7 +135,7 @@ let handle_stack state =
       let to_remove, referenced_vars = split vars state.subst in
       let to_remove = Tyvar.Set.of_list to_remove in
 
-      let mono_vars = Tyvar.Set.diff state.flex_mono_vars to_remove in
+      let mono_vars = Set.diff state.flex_mono_vars to_remove in
       let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
 
       let stack =

@@ -16,18 +16,18 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
   in
   match (ty1, ty2) with
   | TyVar a, other_ty | other_ty, TyVar a -> (
-      let free_flex () = Types.free_flexible_variables other_ty rigid_vars in
+      let free_flex () = Types.ftv other_ty rigid_vars in
       match other_ty with
       | TyVar b when Tyvar.equal a b -> Result.Ok (mono_flex_vars, subst)
-      | _ when Tyvar.Set.mem rigid_vars a ->
+      | _ when Set.mem rigid_vars a ->
           (* Unifying rigid var with something that isn't itself *)
           Result.Error Tc_errors.Unification_clash_failure
-      | _ when Tyvar.Set.mem (free_flex ()) a ->
+      | _ when Set.mem (free_flex ()) a ->
           Result.Error Tc_errors.Unification_occurs_failure
       | _ ->
           let subst = Types.Subst.set subst a other_ty in
           let mono_flex_vars =
-            if Tyvar.Set.mem mono_flex_vars a then
+            if Set.mem mono_flex_vars a then
               Tyvar.Set.union mono_flex_vars (free_flex ())
             else mono_flex_vars
           in
@@ -46,13 +46,11 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
       let ty2 = Types.Subst.apply subst2 ty2 in
 
       let check_escape ((new_flex_mono_vars, new_subst) as result) =
-        let escapes =
-          Types.Subst.range_contains new_subst rigid_vars fresh
-        in
+        let escapes = Types.Subst.range_contains new_subst rigid_vars fresh in
         if escapes then Result.Error Tc_errors.Unification_quantifier_escape
         else Result.Ok result
       in
-      let rigid_vars = Tyvar.Set.add rigid_vars fresh in
+      let rigid_vars = Set.add rigid_vars fresh in
       Result.bind
         (unify rigid_vars mono_flex_vars subst ty1 ty2)
         ~f:check_escape

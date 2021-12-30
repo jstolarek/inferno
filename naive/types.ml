@@ -11,25 +11,21 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
 type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ
 type restriction = Mono | Poly
 
-
-
-let rec free_type_variables_ordered ty to_ignore =
-  let ftv t = free_type_variables_ordered t to_ignore in
+let rec ftv_ordered ty to_ignore =
+  let ftv t = ftv_ordered t to_ignore in
   match ty with
-  | TyVar v ->
-      if Set.mem to_ignore v then [] else [v]
+  | TyVar v -> if Set.mem to_ignore v then [] else [ v ]
   | TyArrow (t1, t2) | TyProduct (t1, t2) -> List.append (ftv t1) (ftv t2)
   | TyForall (v, t') | TyMu (v, t') ->
       let to_ignore = Set.add to_ignore v in
-      free_type_variables_ordered t' to_ignore
+      ftv_ordered t' to_ignore
   | TyConstrApp (_constr, args) ->
       List.fold_left
         ~f:(fun ftvs arg -> List.append ftvs (ftv arg))
         ~init:[] args
 
 (* TODO: rename this to free_type_variables *)
-let rec free_flexible_variables ty to_ignore =
-  Tyvar.Set.of_list (free_type_variables_ordered ty to_ignore)
+let rec ftv ty to_ignore = Tyvar.Set.of_list (ftv_ordered ty to_ignore)
 
 let is_monomorphic ty rigid_vars flex_mono_vars =
   let rec is_mono ty all_mono_vars =
@@ -80,8 +76,8 @@ module Subst = struct
   let singleton var ty = Map.singleton (module Tyvar) var ty
 
   let range_contains subst rigid_vars var =
-    let ftv ty = free_flexible_variables ty rigid_vars in
-    Map.exists subst ~f:(fun ty -> Tyvar.Set.mem (ftv ty) var)
+    let ftv' ty = ftv ty rigid_vars in
+    Map.exists subst ~f:(fun ty -> Set.mem (ftv' ty) var)
 end
 
 (* Assuming iso-recursive types here, where mu types need to be explicitly
@@ -103,4 +99,4 @@ let freshen_quantifiers ty =
   (fresh_qs, Subst.apply subst h)
 
 let forall vars ty =
-  List.fold_right ~f:(fun v ty ->  TyForall (v, ty)) ~init:ty vars
+  List.fold_right ~f:(fun v ty -> TyForall (v, ty)) ~init:ty vars
