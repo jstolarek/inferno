@@ -1,7 +1,5 @@
 open Core
 
-type failure = Clash_failure | Occurs_failure | Quantifier_escape
-
 (** This assumes that [subst] has already been applied to [ty1] and [ty2] *)
 let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
   let open Types in
@@ -31,7 +29,11 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
               Tyvar.Set.union mono_flex_vars (free_flex ())
             else mono_flex_vars
           in
-          Result.Ok (mono_flex_vars, subst))
+          if
+            Set.mem mono_flex_vars a
+            && not (Types.is_monomorphic other_ty rigid_vars mono_flex_vars)
+          then Result.Error Tc_errors.Cannot_monomorphise
+          else Result.Ok (mono_flex_vars, subst))
   | TyProduct (tya1, tya2), TyProduct (tyb1, tyb2)
   | TyArrow (tya1, tya2), TyArrow (tyb1, tyb2) ->
       unify_list [ tya1; tya2 ] [ tyb1; tyb2 ]

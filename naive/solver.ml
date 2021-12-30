@@ -32,7 +32,7 @@ let handle_constraint state =
       if can_demote_all_ftv then
         let state = State.with_flex_mono_vars state flex_mono_vars in
         Result.Ok (push_and_set_constraint state (Stack.Def (var, ty)) c)
-      else Result.Error Tc_errors.Def_cannot_monomorphise
+      else Result.Error Tc_errors.Cannot_monomorphise
   (* S-LetPush *)
   | Constraint.Let (restr, var, tyvar, c1, c2) ->
       push (Stack.Let (restr, var, tyvar, c2)) c1
