@@ -2,5 +2,14 @@
   (name naive)
   (public_name inferno.naive)
   (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
+  (modules solver unifier types constraint state tc_errors term tevar tyvar constraint_of_term)
   (libraries inferno.shared core)
+)
+
+(executable
+  (name Naive_main)
+  (public_name inferno.naive_main)
+  (package inferno)
+  (modules naive_main)
+  (libraries unix pprint inferno.shared inferno.naive)
 )

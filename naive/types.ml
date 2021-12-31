@@ -100,3 +100,9 @@ let freshen_quantifiers ty =
 
 let forall vars ty =
   List.fold_right ~f:(fun v ty -> TyForall (v, ty)) ~init:ty vars
+
+module Builtin =
+struct
+  let int = Shared.Types.int_t
+  let bool = Shared.Types.bool_t
+end

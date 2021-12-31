@@ -25,3 +25,15 @@ type term =
   | Proj of int * term
   | Int of int
   | Bool of bool
+
+
+let rec is_val = function
+  | App _            -> false
+  | Let (_, _, n, m) -> is_val n && is_val m
+  | _                   -> true
+
+(* Value restriction *)
+let rec is_gval = function
+  | App _ | FrozenVar _ -> false
+  | Let (_, _, n, m)       -> is_val n && is_gval m
+  | _                         -> true

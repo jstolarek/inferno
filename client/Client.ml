@@ -210,16 +210,10 @@ let product_i i x y =
   else
     product y x
 
-let rec is_val = function
-  | ML.App _            -> false
-  | ML.Let (_, _, n, m) -> is_val n && is_val m
-  | _                   -> true
+let rec is_val = Shared.Ml.is_val
 
 (* Value restriction *)
-let rec is_gval = function
-  | ML.App _ | ML.FrozenVar _ -> false
-  | ML.Let (_, _, n, m)       -> is_val n && is_gval m
-  | _                         -> true
+let rec is_gval = Shared.Ml.is_gval
 
 (* Ensures that all elements of xs appearing in ys appear at the front and in
    the same order *)
