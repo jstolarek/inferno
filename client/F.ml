@@ -45,18 +45,7 @@ type nominal_type = (tyvar, tyvar) typ
 type debruijn_type =
     (DeBruijn.index, unit) typ
 
-let rec string_of_typ (t : nominal_type)  =
-  match t with
-  | TyVar a -> "TyVar " ^ string_of_int a
-  | TyArrow (a, b) -> "(" ^ string_of_typ a ^ " -> " ^ string_of_typ b ^ ")"
-  | TyProduct (a, b) -> "(" ^ string_of_typ a ^ "×" ^ string_of_typ b ^ ")"
-  | TyForall (q, t) -> "∀ " ^ string_of_int q ^ ". " ^ string_of_typ t
-  | TyMu (q, t) -> "μ " ^ string_of_int q ^ ". " ^ string_of_typ t
-  | TyConstrApp (constr, []) -> Types.Type_constr.show constr
-  | TyConstrApp (constr, args) ->
-    let c_name = Types.Type_constr.show constr in
-    let arg_strings = List.map string_of_typ args in
-    c_name ^ " [" ^ String.concat ", " arg_strings ^ "]"
+let rec string_of_typ = Shared.Types.string_of_typ
 
 
 

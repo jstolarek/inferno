@@ -14,6 +14,7 @@ type t =
 let forall (qs, c) = List.fold_right ~f:(fun q c -> Forall (q, c)) ~init:c qs
 let exists (qs, c) = List.fold_right ~f:(fun q c -> Exists (q, c)) ~init:c qs
 let conj = function
+    | [] -> True
     | [c] -> c
     | c :: cs ->  List.fold_right ~f:(fun conj c -> And (conj, c)) ~init:c cs
 

@@ -166,3 +166,6 @@ let rec solve state =
   if State.is_final state then
     Result.Ok { mono_vars = state.flex_mono_vars; subst = state.subst }
   else Result.bind (perform_step state) ~f:solve
+
+
+let state_of_constraint = State.empty
