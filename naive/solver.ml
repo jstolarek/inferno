@@ -9,6 +9,10 @@ let handle_constraint state =
   let push frame constr =
     Result.Ok (push_and_set_constraint state frame constr)
   in
+  let with_constraint = Fn.flip State.with_constraint in
+  let with_unifier_state vars subst state =
+    State.with_unifier_state state vars subst
+  in
   match c with
   (* S-ConjPush*)
   | Constraint.And (c1, c2) -> push (Stack.Conj c2) c1
@@ -45,8 +49,11 @@ let handle_constraint state =
           (Types.Subst.apply theta ty2)
       in
       Result.bind unifier_res ~f:(fun (new_flex_mono_vars, new_subst) ->
-          Result.Ok
-            (State.with_unifier_state state new_flex_mono_vars new_subst))
+          let state =
+            with_unifier_state new_flex_mono_vars new_subst state
+            |> with_constraint Constraint.True
+          in
+          Result.Ok state)
   (* S-Freeze *)
   | Constraint.Freeze (var, ty) ->
       let gamma = State.tevar_env state in
@@ -83,7 +90,7 @@ let handle_stack state =
   let pop_and_set c = Result.Ok (State.pop_and_set_constraint state c) in
   let with_stack = Fn.flip State.with_stack in
   let with_constraint = Fn.flip State.with_constraint in
-  let with_unifier_state vars subst stack =
+  let with_unifier_state vars subst state =
     State.with_unifier_state state vars subst
   in
 
@@ -154,6 +161,8 @@ let handle_stack state =
   | _, [ Exists _ ] | _, [] -> failwith "state is already final"
 
 let perform_step state =
+  Shared.Logging.log_sexp "Performing step on state:\n%s\n"
+    (State.sexp_of_t state);
   assert (not (State.is_final state));
   (* let st = state.stack in *)
   let constr = state.cnstrnt in
@@ -163,9 +172,9 @@ let perform_step state =
 type solution = { mono_vars : State.tyvar_set; subst : Types.Subst.t }
 
 let rec solve state =
-  if State.is_final state then
-    Result.Ok { mono_vars = state.flex_mono_vars; subst = state.subst }
+  if State.is_final state then (
+    Shared.Logging.log_sexp "Final state:\n%s\n" (State.sexp_of_t state);
+    Result.Ok { mono_vars = state.flex_mono_vars; subst = state.subst })
   else Result.bind (perform_step state) ~f:solve
-
 
 let state_of_constraint = State.empty

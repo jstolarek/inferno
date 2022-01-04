@@ -10,6 +10,7 @@ type t =
   | Forall of Tyvar.t * t
   | Def of Term.tevar * Types.t * t
   | Let of Types.restriction * Term.tevar * Tyvar.t * t * t
+    [@@deriving sexp]
 
 let forall (qs, c) = List.fold_right ~f:(fun q c -> Forall (q, c)) ~init:c qs
 let exists (qs, c) = List.fold_right ~f:(fun q c -> Exists (q, c)) ~init:c qs

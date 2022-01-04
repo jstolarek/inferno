@@ -7,8 +7,9 @@ module Stack = struct
     | Conj of Constraint.t
     | Def of Term.tevar * Types.t
     | Let of Types.restriction * Term.tevar * Tyvar.t * Constraint.t
+  [@@deriving sexp]
 
-  type t = frame list
+  type t = frame list [@@deriving sexp]
   (** Head of the list is top of stack (= innermost constraint) *)
 
   let is_existential_frame = function Exists _ -> true | _ -> false
@@ -39,7 +40,7 @@ module Stack = struct
   end
 end
 
-type tyvar_set = Tyvar.Set.t
+type tyvar_set = Tyvar.Set.t [@@deriving sexp]
 
 type t = {
   stack : Stack.t;
@@ -47,9 +48,10 @@ type t = {
   subst : Types.Subst.t;
   cnstrnt : Constraint.t;
   (* cached information that can be obtained from earlier fields *)
-  mutable rigid_vars : Tyvar.set option;
-  mutable tevar_env : Types.t Tevar.Env.t option;
+  mutable rigid_vars : (Tyvar.set option[@sexp.opaque]);
+  mutable tevar_env : (Types.t Tevar.Env.t option[@sexp.opaque]);
 }
+[@@deriving sexp]
 
 let rigid_vars state =
   match state.rigid_vars with
@@ -88,9 +90,11 @@ let empty cnstrnt =
   }
 
 let is_final s =
-  match s.stack with
-  | [ Exists _; Forall _ ] | [ Exists _ ] | [ Forall _ ] | [] -> true
-  | _ -> false
+  if Constraint.is_true s.cnstrnt then
+    match s.stack with
+    | [ Exists _; Forall _ ] | [ Exists _ ] | [ Forall _ ] | [] -> true
+    | _ -> false
+  else false
 
 let with_constraint state constr = { state with cnstrnt = constr }
 

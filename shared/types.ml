@@ -2,7 +2,7 @@
 
 module type Type_constr =
   sig
-    type t [@@deriving compare, eq]
+    type t [@@deriving compare, eq, sexp]
 
     val show : t -> string
     val arity : t -> int
@@ -14,7 +14,7 @@ module type Type_constr =
 
 module Type_constr : Type_constr =
   struct
-    type t = string * int [@@deriving compare, eq]
+    type t = string * int [@@deriving compare, eq, sexp]
 
     let show = fst
     let arity = snd

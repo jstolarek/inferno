@@ -2,5 +2,5 @@
   (name shared)
   (public_name inferno.shared)
   (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
-  (libraries core)
+  (libraries core sexplib)
 )

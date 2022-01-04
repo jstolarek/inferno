@@ -7,9 +7,10 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
   | TyForall of 'b * ('a, 'b) typ
   | TyMu of 'b * ('a, 'b) typ
   | TyConstrApp of Shared.Types.Type_constr.t * ('a, 'b) typ list
+                    [@@deriving sexp]
 
-type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ
-type restriction = Mono | Poly
+type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ [@@deriving sexp]
+type restriction = Mono | Poly [@@deriving sexp]
 
 let rec ftv_ordered ty to_ignore =
   let ftv t = ftv_ordered t to_ignore in
@@ -42,8 +43,17 @@ let is_monomorphic ty rigid_vars flex_mono_vars =
   in
   is_mono ty (Set.union rigid_vars flex_mono_vars)
 
+type tt = t [@@deriving sexp]
+
 module Subst = struct
-  type nonrec t = (Tyvar.t, t, Tyvar.comparator_witness) Map.t
+  type t = (Tyvar.t, tt, Tyvar.comparator_witness) Map.t
+
+  type subst_alist = (Tyvar.t * tt) list [@@deriving sexp]
+
+  let sexp_of_t subst =
+    Map.to_alist subst |> sexp_of_subst_alist
+
+  let t_of_sexp _ = failwith "not implemented"
 
   let empty = Map.empty (module Tyvar)
   let get (subst : t) var = Map.find_exn subst var

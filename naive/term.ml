@@ -1,4 +1,4 @@
-type tevar = Tevar.t
+type tevar = Tevar.t [@@deriving sexp]
 
 
 type t = Shared.Ml.term =
