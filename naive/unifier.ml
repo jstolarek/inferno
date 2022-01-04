@@ -1,6 +1,5 @@
 open Core
 
-(* TODO: no, this doesn't correctly implement \theta' \comp \theta*)
 
 (** This assumes that [subst] has already been applied to [ty1] and [ty2] *)
 let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =

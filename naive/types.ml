@@ -88,6 +88,10 @@ module Subst = struct
   let range_contains subst rigid_vars var =
     let ftv' ty = ftv ty rigid_vars in
     Map.exists subst ~f:(fun ty -> Set.mem (ftv' ty) var)
+
+  let compose ~first ~second =
+    Map.map ~f:(apply second) first
+
 end
 
 (* Assuming iso-recursive types here, where mu types need to be explicitly

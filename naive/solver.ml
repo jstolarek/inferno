@@ -48,7 +48,8 @@ let handle_constraint state =
           (Types.Subst.apply theta ty1)
           (Types.Subst.apply theta ty2)
       in
-      Result.bind unifier_res ~f:(fun (new_flex_mono_vars, new_subst) ->
+      Result.bind unifier_res ~f:(fun (new_flex_mono_vars, theta') ->
+          let new_subst = Types.Subst.compose ~first:theta ~second:theta' in
           let state =
             with_unifier_state new_flex_mono_vars new_subst state
             |> with_constraint Constraint.True
