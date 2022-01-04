@@ -62,7 +62,11 @@ let handle_constraint state =
       Result.Ok (State.with_constraint state (Constraint.Equiv (var_ty, ty)))
   (* S-Inst *)
   | Constraint.Inst (var, ty) ->
-      let fresh_quantifiers, freshened_body = Types.freshen_quantifiers ty in
+      let gamma = State.tevar_env state in
+      let var_ty = Tevar.Env.get gamma var in
+      let fresh_quantifiers, freshened_body =
+        Types.freshen_quantifiers var_ty
+      in
       let equiv = Constraint.Equiv (freshened_body, ty) in
       let constr =
         List.fold_right
