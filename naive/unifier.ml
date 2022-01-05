@@ -1,6 +1,9 @@
 open Core
 
-(** This assumes that [subst] has already been applied to [ty1] and [ty2].
+(**
+    As a minor diversion from the paper, we get the initial substitution
+    [subst] and return an updated version of it, instead of returning something
+    that needs to be composed with the initial substitution.
     The first return value (if Ok) indicates whether the types were already
     equal. *)
 let rec unify_and_check_equal rigid_vars mono_flex_vars subst ty1 ty2 =
@@ -29,7 +32,10 @@ let rec unify_and_check_equal rigid_vars mono_flex_vars subst ty1 ty2 =
       | _ when Set.mem (free_flex ()) a ->
           Result.Error Tc_errors.Unification_occurs_failure
       | _ ->
-          let subst = Types.Subst.set subst a other_ty in
+          (* update all mappings, including the a -> a one *)
+          let singleton = Types.Subst.singleton a other_ty in
+          let subst = Map.map ~f:(Types.Subst.apply singleton) subst in
+
           let mono_flex_vars =
             if Set.mem mono_flex_vars a then
               Tyvar.Set.union mono_flex_vars (free_flex ())
