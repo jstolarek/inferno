@@ -1,23 +1,26 @@
 open Core
 
-
-(** This assumes that [subst] has already been applied to [ty1] and [ty2] *)
-let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
+(** This assumes that [subst] has already been applied to [ty1] and [ty2].
+    The first return value (if Ok) indicates whether the types were already
+    equal. *)
+let rec unify_and_check_equal rigid_vars mono_flex_vars subst ty1 ty2 =
   let open Types in
+  let unify = unify_and_check_equal in
   let try_unify state_res ty1 ty2 =
-    Result.bind state_res ~f:(fun (flex, subst) ->
-        unify rigid_vars flex subst ty1 ty2)
+    Result.bind state_res ~f:(fun (equal, flex, subst) ->
+        let unify_res = unify rigid_vars flex subst ty1 ty2 in
+        Result.map unify_res ~f:(fun (a, b, c) -> (a && equal, b, c)))
   in
   let unify_list args1 args2 =
     List.fold2_exn ~f:try_unify
-      ~init:(Result.Ok (mono_flex_vars, subst))
+      ~init:(Result.Ok (true, mono_flex_vars, subst))
       args1 args2
   in
   match (ty1, ty2) with
   | TyVar a, other_ty | other_ty, TyVar a -> (
       let free_flex () = Types.ftv other_ty rigid_vars in
       match other_ty with
-      | TyVar b when Tyvar.equal a b -> Result.Ok (mono_flex_vars, subst)
+      | TyVar b when Tyvar.equal a b -> Result.Ok (true, mono_flex_vars, subst)
       | _ when Set.mem rigid_vars a ->
           (* Unifying rigid var with something that isn't itself *)
           Result.Error Tc_errors.Unification_clash_failure
@@ -34,7 +37,7 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
             Set.mem mono_flex_vars a
             && not (Types.is_monomorphic other_ty rigid_vars mono_flex_vars)
           then Result.Error Tc_errors.Cannot_monomorphise
-          else Result.Ok (mono_flex_vars, subst))
+          else Result.Ok (false, mono_flex_vars, subst))
   | TyProduct (tya1, tya2), TyProduct (tyb1, tyb2)
   | TyArrow (tya1, tya2), TyArrow (tyb1, tyb2) ->
       unify_list [ tya1; tya2 ] [ tyb1; tyb2 ]
@@ -48,7 +51,7 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
       let ty1 = Types.Subst.apply subst1 ty1 in
       let ty2 = Types.Subst.apply subst2 ty2 in
 
-      let check_escape ((new_flex_mono_vars, new_subst) as result) =
+      let check_escape ((equal, new_flex_mono_vars, new_subst) as result) =
         let escapes = Types.Subst.range_contains new_subst rigid_vars fresh in
         if escapes then Result.Error Tc_errors.Quantifier_escape
         else Result.Ok result
@@ -60,3 +63,15 @@ let rec unify rigid_vars mono_flex_vars subst ty1 ty2 =
   | TyMu (_q1, _ty1), TyForall (_q2, _ty2) ->
       failwith "not implemented at the moment"
   | _ -> Result.Error Tc_errors.Unification_clash_failure
+
+let equal ty1 ty2 =
+  let res =
+    unify_and_check_equal Tyvar.Set.empty Tyvar.Set.empty Types.Subst.empty ty1
+      ty2
+  in
+  match res with Result.Ok (equal, _, _) -> equal | Result.Error _ -> false
+
+let unify rv mfv s ty1 ty2 =
+  Result.map
+    ~f:(fun (equal, mono_flex_vars, subst) -> (mono_flex_vars, subst))
+    (unify_and_check_equal rv mfv s ty1 ty2)
