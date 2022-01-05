@@ -17,6 +17,8 @@ module Stack = struct
 
   let push stack new_frame =
     match (new_frame, stack) with
+    | Exists [], _
+    | Forall [], _ -> stack
     | Exists vars, Exists vars' :: stack' ->
         Exists (List.append vars vars') :: stack'
     | Forall vars, Forall vars' :: stack' ->
