@@ -9,6 +9,12 @@ let handle_constraint state =
   let push frame constr =
     Result.Ok (push_and_set_constraint state frame constr)
   in
+  let push_extend_unifier_state frame constr new_var =
+    let state = push_and_set_constraint state frame constr in
+    let subst = Types.Subst.set state.subst new_var (TyVar new_var) in
+    let state = State.with_unifier_state state state.flex_mono_vars subst in
+    Result.Ok state
+  in
   let with_constraint = Fn.flip State.with_constraint in
   let with_unifier_state vars subst state =
     State.with_unifier_state state vars subst
@@ -18,10 +24,7 @@ let handle_constraint state =
   | Constraint.And (c1, c2) -> push (Stack.Conj c2) c1
   (* S-ExistsPush*)
   | Constraint.Exists (var, c) ->
-      let state = push_and_set_constraint state (Stack.Exists [ var ]) c in
-      let subst = Types.Subst.set state.subst var (TyVar var) in
-      let state = State.with_unifier_state state state.flex_mono_vars subst in
-      Result.Ok state
+      push_extend_unifier_state (Stack.Exists [ var ]) c var
   (* S-ForallPush*)
   | Constraint.Forall (var, c) -> push (Stack.Forall [ var ]) c
   (* S-DefPush*)
@@ -39,7 +42,7 @@ let handle_constraint state =
       else Result.Error Tc_errors.Cannot_monomorphise
   (* S-LetPush *)
   | Constraint.Let (restr, var, tyvar, c1, c2) ->
-      push (Stack.Let (restr, var, tyvar, c2)) c1
+      push_extend_unifier_state (Stack.Let (restr, var, tyvar, c2)) c1 tyvar
   (* S-Eq *)
   | Constraint.Equiv (ty1, ty2) ->
       let theta = state.subst in
