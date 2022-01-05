@@ -20,3 +20,6 @@ module Env = struct
   let empty = Map.empty (module Comparable)
   let set env var ty = Map.set env ~key:var ~data:ty
 end
+
+
+module Set = Set.Make (Comparable)

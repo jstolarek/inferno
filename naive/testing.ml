@@ -36,6 +36,9 @@ let run_test ~generalise_toplevel t =
   let constr = make_constraint ~generalise_toplevel result_var t.term in
   log_sexp "constraint:\n%s\n" (N.Constraint.sexp_of_t constr);
 
+  let constr = N.Constraint.freshen_binders constr in
+  log_sexp "constraint after freshening binders:\n%s\n" (N.Constraint.sexp_of_t constr);
+
   let exp_ty_opt = Option.map t.typ ~f:N.Types.nominal_of_debruijn in
 
   let initial_state = N.Solver.state_of_constraint constr in
