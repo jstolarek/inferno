@@ -1,6 +1,6 @@
 open Core
 
-let translate term ty =
+let translate ?(obey_value_restriction = true) term ty =
   let fresh = Tyvar.fresh_tyvar in
   let rec for_lambda arg_ty ret_ty fun_ty tevar term =
     let open Constraint in
@@ -31,7 +31,7 @@ let translate term ty =
         let a1 = fresh () in
         let a1t = Types.TyVar a1 in
         Constraint.Let (restriction, x, a1, transl m a1t, transl n ty)
-    | Term.Let (x, Some annot_ty, m, n) when Term.is_gval m ->
+    | Term.Let (x, Some annot_ty, m, n) when Term.is_gval m || not obey_value_restriction ->
         let qs, guarded_ty = Types.split_toplevel_quantifiers annot_ty in
         let conj1 = Constraint.forall (qs, transl m guarded_ty) in
         let conj2 = Constraint.Def (x, annot_ty, transl n ty) in
