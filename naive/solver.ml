@@ -132,12 +132,9 @@ let handle_stack state =
         match restr with
         | Mono ->
             ( Set.diff non_referenced (Tyvar.Set.of_list generalizable),
-              referenced,
-              c1_ty )
-        | Poly ->
-            ( non_referenced,
               List.append generalizable referenced,
-              Types.forall generalizable c1_ty )
+              c1_ty )
+        | Poly -> (non_referenced, referenced, Types.forall generalizable c1_ty)
       in
 
       let mono_vars = Set.diff state.flex_mono_vars to_remove in
