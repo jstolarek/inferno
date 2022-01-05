@@ -115,8 +115,24 @@ let freshen_quantifiers ty =
 let forall vars ty =
   List.fold_right ~f:(fun v ty -> TyForall (v, ty)) ~init:ty vars
 
-module Builtin =
-struct
+module Builtin = struct
   let int = Shared.Types.int_t
   let bool = Shared.Types.bool_t
 end
+
+let nominal_of_debruijn t =
+  let rec nod t map =
+    let app t = nod t map in
+    match t with
+    | TyVar v -> TyVar (List.nth_exn map v)
+    | TyArrow (t1, t2) -> TyArrow (app t1, app t2)
+    | TyProduct (t1, t2) -> TyProduct (app t1, app t2)
+    | TyForall ((), t') ->
+        let fresh = Tyvar.fresh_tyvar () in
+        TyForall (fresh, nod t' (fresh :: map))
+    | TyMu ((), t') ->
+        let fresh = Tyvar.fresh_tyvar () in
+        TyForall (fresh, nod t' (fresh :: map))
+    | TyConstrApp (constr, args) -> TyConstrApp (constr, List.map ~f:app args)
+  in
+  nod t []
