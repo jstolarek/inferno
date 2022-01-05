@@ -46,7 +46,7 @@ let list_t t = TyConstrApp (Type_constr.list, [t])
 
 let rec string_of_typ (t : nominal_type)  =
   match t with
-  | TyVar a -> "TyVar " ^ string_of_int a
+  | TyVar a -> "v" ^ string_of_int a
   | TyArrow (a, b) -> "(" ^ string_of_typ a ^ " -> " ^ string_of_typ b ^ ")"
   | TyProduct (a, b) -> "(" ^ string_of_typ a ^ "×" ^ string_of_typ b ^ ")"
   | TyForall (q, t) -> "∀ " ^ string_of_int q ^ ". " ^ string_of_typ t

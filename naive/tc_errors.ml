@@ -3,3 +3,4 @@ type errors =
   | Unification_occurs_failure
   | Quantifier_escape
   | Cannot_monomorphise
+      [@@deriving sexp]

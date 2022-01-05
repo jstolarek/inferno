@@ -378,7 +378,7 @@ let known_broken_test t : unit =
 
 let () =
   let tests =
-    Test_definitions.all_tests
+    Test_definitions.inferno_implementation_tests
       (fun t () -> test t)
       (fun t () -> known_broken_test t)
   in

@@ -11,6 +11,8 @@ end
 
 include Comparable
 
+let fresh_tevar = Shared.Ml.fresh_tevar
+
 module Env = struct
   type 'a t = (T.t, 'a, comparator_witness) Map.t
 

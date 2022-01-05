@@ -7,9 +7,9 @@
 )
 
 (executable
-  (name Naive_main)
-  (public_name inferno.naive_main)
-  (package inferno)
-  (modules naive_main)
-  (libraries unix pprint inferno.shared inferno.naive)
-)
+  (name Testing)
+  (public_name inferno.naive.testing)
+  (modes native)
+  (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
+  (libraries inferno.shared inferno.naive core ounit2)
+  (modules testing))

@@ -208,28 +208,43 @@ let env_test =
 
 (* example            : A1
    term               : λx.λy.y
-   inferred type      : [∀ b. ∀ a.] a → b → b
+   inferred type      : [∀ b. ∀ a.] a → b → b  (inferno order)
    type in PLDI paper : a → b → b
 *)
-let a1 =
+let a1_inferno_order =
   { name = "A1"
   ; term = abs "x" (abs "y" y)
   ; typ  = Some (TyForall ((), TyForall ((),
              TyArrow (TyVar 0, TyArrow (TyVar 1, TyVar 1)))))
   ; vres = true
   }
+let a1_correct_order =
+  { name = "A1"
+  ; term = a1_inferno_order.term
+  ; typ  = Some (TyForall ((), TyForall ((),
+             TyArrow (TyVar 1, TyArrow (TyVar 0, TyVar 0)))))
+  ; vres = true
+  }
 
 (* example            : A1∘
    term               : $(λx.λy.y)
-   inferred type      : ∀ b. ∀ a. a → b → b
+   inferred type      : ∀ b. ∀ a. a → b → b (* inferno order *)
    type in PLDI paper : ∀ a b. a → b → b
  *)
-let a1_dot =
+let a1_dot_correct_order =
   { name = "A1̣∘"
   ; term = gen (abs "x" (abs "y" y))
   ; typ  = Some (TyForall ((), TyForall ((),
-             TyArrow (TyVar 0, TyArrow (TyVar 1, TyVar 1)))))
+             TyArrow (TyVar 1, TyArrow (TyVar 0, TyVar 0)))))
   ; vres = true
+  }
+
+let a1_dot_inferno_order =
+  { name = a1_dot_correct_order.name
+  ; term = a1_dot_correct_order.term
+  ; typ  = Some (TyForall ((), TyForall ((),
+             TyArrow (TyVar 0, TyArrow (TyVar 1, TyVar 1)))))
+  ; vres = a1_dot_correct_order.vres
   }
 
 (* example            : A2
@@ -1675,12 +1690,13 @@ let fml_value_restriction_3 =
   ; vres = true
   }
 
-(* passing functions is workaround to keep list below as in *)
-let all_tests test known_broken_test = [
-  test env_test;
+let shared_good_tests test = [
+
   (* PLDI paper examples *)
-  test a1;
-  test a1_dot;
+
+  (* a1 is added as per-implementation test *)
+  (* a1_dot is added as per-implementation test *)
+
   test a2;
   test a2_dot;
   test a4;
@@ -1747,7 +1763,7 @@ let all_tests test known_broken_test = [
   test fml_let_annot_8_quantifier_shadowing;
   test fml_let_annot_9;
   test fml_let_annot_9_no_annot;
-  known_broken_test fml_let_annot_10;
+
 
   test fml_mono_binder_constraint_1;
   test fml_mono_binder_constraint_2;
@@ -1796,5 +1812,35 @@ let all_tests test known_broken_test = [
 
   test fml_value_restriction_1;
   test fml_value_restriction_2;
-  known_broken_test fml_value_restriction_3
+
 ]
+
+let inferno_tests_known_broken handle =
+  [
+  handle fml_let_annot_10;
+  handle fml_value_restriction_3
+]
+
+let inferno_dedicated_tests test =
+[
+  (* TODO: Consider moving to shared tests? *)
+  test env_test;
+
+  test a1_inferno_order;
+  test a1_dot_inferno_order;
+]
+
+
+let inferno_implementation_tests good_test known_broken_test =
+  shared_good_tests good_test @ inferno_dedicated_tests good_test
+  @ inferno_tests_known_broken  known_broken_test
+
+
+let naive_dedicated_tests test =
+[
+  test a1_correct_order;
+  test a1_dot_correct_order;
+]
+
+let naive_implementation_tests =
+  shared_good_tests Fun.id @ naive_dedicated_tests Fun.id
