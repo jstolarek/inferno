@@ -7,7 +7,7 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
   | TyForall of 'b * ('a, 'b) typ
   | TyMu of 'b * ('a, 'b) typ
   | TyConstrApp of Shared.Types.Type_constr.t * ('a, 'b) typ list
-                    [@@deriving sexp]
+[@@deriving sexp]
 
 type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ [@@deriving sexp]
 type restriction = Mono | Poly [@@deriving sexp]
@@ -47,14 +47,10 @@ type tt = t [@@deriving sexp]
 
 module Subst = struct
   type t = (Tyvar.t, tt, Tyvar.comparator_witness) Map.t
-
   type subst_alist = (Tyvar.t * tt) list [@@deriving sexp]
 
-  let sexp_of_t subst =
-    Map.to_alist subst |> sexp_of_subst_alist
-
+  let sexp_of_t subst = Map.to_alist subst |> sexp_of_subst_alist
   let t_of_sexp _ = failwith "not implemented"
-
   let empty = Map.empty (module Tyvar)
   let get (subst : t) var = Map.find_exn subst var
   let set subst var ty = Map.set subst ~key:var ~data:ty
@@ -89,9 +85,7 @@ module Subst = struct
     let ftv' ty = ftv ty rigid_vars in
     Map.exists subst ~f:(fun ty -> Set.mem (ftv' ty) var)
 
-  let compose ~first ~second =
-    Map.map ~f:(apply second) first
-
+  let compose ~first ~second = Map.map ~f:(apply second) first
 end
 
 (* Assuming iso-recursive types here, where mu types need to be explicitly
