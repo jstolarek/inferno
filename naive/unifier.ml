@@ -8,6 +8,8 @@ let rec unify_and_check_equal rigid_vars mono_flex_vars subst ty1 ty2 =
   let unify = unify_and_check_equal in
   let try_unify state_res ty1 ty2 =
     Result.bind state_res ~f:(fun (equal, flex, subst) ->
+        let ty1 = Subst.apply subst ty1 in
+        let ty2 = Subst.apply subst ty2 in
         let unify_res = unify rigid_vars flex subst ty1 ty2 in
         Result.map unify_res ~f:(fun (a, b, c) -> (a && equal, b, c)))
   in
