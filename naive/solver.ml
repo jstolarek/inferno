@@ -31,7 +31,13 @@ let handle_constraint state =
   | Constraint.Def (var, ty, c) ->
       let rigid_vars = State.rigid_vars state in
       let free_flexible = Types.ftv ty rigid_vars in
-      let flex_mono_vars = Set.union state.flex_mono_vars free_flexible in
+
+      let ty_substed = Types.Subst.apply state.subst ty in
+      let free_flexible_substed = Types.ftv ty_substed rigid_vars in
+
+      let flex_mono_vars =
+        Set.union state.flex_mono_vars free_flexible_substed
+      in
       let can_demote_all_ftv =
         Types.Subst.can_demote state.subst rigid_vars flex_mono_vars
           free_flexible
