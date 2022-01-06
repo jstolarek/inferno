@@ -21,5 +21,4 @@ module Env = struct
   let set env var ty = Map.set env ~key:var ~data:ty
 end
 
-
 module Set = Set.Make (Comparable)
