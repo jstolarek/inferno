@@ -26,13 +26,20 @@ let rec unify_and_check_equal rigid_vars mono_flex_vars subst ty1 ty2 =
       let free_flex () = Types.ftv other_ty rigid_vars in
       match other_ty with
       | TyVar b when Tyvar.equal a b -> Result.Ok (true, mono_flex_vars, subst)
+      | TyVar b
+        when (not (phys_equal ty1 other_ty))
+             && Set.mem rigid_vars a
+             && not (Set.mem rigid_vars b) ->
+          (* Trying to unify a ~ b, where a is rigid and b is flexible.
+             Just do b ~ a instead, to trigger one of the cases below *)
+          unify_and_check_equal rigid_vars mono_flex_vars subst ty2 ty1
       | _ when Set.mem rigid_vars a ->
-          (* Unifying rigid var with something that isn't itself *)
+          (* Unifying rigid var with something that isn't itself or a flexible variable *)
           Result.Error Tc_errors.Unification_clash_failure
       | _ when Set.mem (free_flex ()) a ->
           Result.Error Tc_errors.Unification_occurs_failure
       | _ ->
-          (* update all mappings, including the a -> a one *)
+          (* Actual unifcation. update all mappings, including the a -> a one *)
           let singleton = Types.Subst.singleton a other_ty in
           let subst = Map.map ~f:(Types.Subst.apply singleton) subst in
 
