@@ -12,6 +12,42 @@ type ('a, 'b) typ = ('a, 'b) Shared.Types.typ =
 type t = (Shared.Types.tyvar, Shared.Types.tyvar) typ [@@deriving sexp]
 type restriction = Mono | Poly [@@deriving sexp]
 
+class ['a] fold_visitor =
+  object (o)
+    method visit (acc : 'a) (ty : t) =
+      match ty with
+      | TyVar v -> o#visit_var acc v
+      | TyArrow (t1, t2) -> o#visit_arrow acc t1 t2
+      | TyProduct (t1, t2) -> o#visit_product acc t1 t2
+      | TyForall (v, t') -> o#visit_forall acc v t'
+      | TyMu (v, t') -> o#visit_mu acc v t'
+      | TyConstrApp (constr, args) -> o#visit_constr_app acc constr args
+
+    method visit_var acc v = acc
+    method visit_product acc t1 t2 = o#visit (o#visit acc t1) t2
+    method visit_arrow acc t1 t2 = o#visit (o#visit acc t1) t2
+    method visit_forall acc v t' = o#visit acc t'
+    method visit_mu acc v t' = o#visit acc t'
+
+    method visit_constr_app acc constr args =
+      List.fold_left ~f:o#visit ~init:acc args
+  end
+
+let all_variables t =
+  let bind_and_visit visit set v body =
+    Shared.Logging.log "found type variable %d\n" v;
+    visit (Set.add set v) body
+  in
+  let visitor =
+    object (o)
+      inherit [Tyvar.Set.t] fold_visitor
+      method! visit_var = Set.add
+      method! visit_forall = bind_and_visit o#visit
+      method! visit_mu = bind_and_visit o#visit
+    end
+  in
+  visitor#visit Tyvar.Set.empty t
+
 let ftv_ordered ty to_ignore =
   let rec collect_ftvs ty to_ignore =
     let ftv t = collect_ftvs t to_ignore in
