@@ -5,12 +5,24 @@ module S = Shared
 (* module Translate = DeBruijn.MakeTranslate(TypeVar)(TypeInTerm)(Int) *)
 let tests = Shared.Test_definitions.naive_implementation_tests
 
-let make_constraint ~generalise_toplevel result_var term =
+let make_constraint ~obey_value_restriction ~generalise_toplevel term =
+  (* Make sure that fresh type variables we generate don't clash with those
+     introduced by translating forall annotations on let terms *)
+  let max_tyar_in_term =
+    N.Term.type_variables term |> Set.max_elt |> Option.value ~default:(-1)
+  in
+  N.Tyvar.set_initial_tyvar (max_tyar_in_term + 1);
+  S.Logging.log "starting fresh tyvars at %d\n" (max_tyar_in_term + 1);
+
+  let result_var = N.Tyvar.fresh_tyvar () in
+
   let transl_var =
     if generalise_toplevel then N.Tyvar.fresh_tyvar () else result_var
   in
   let transl_var_t = N.Types.TyVar transl_var in
-  let constr_trans = N.Constraint_of_term.translate term transl_var_t in
+  let constr_trans =
+    N.Constraint_of_term.translate ~obey_value_restriction term transl_var_t
+  in
 
   let open_result =
     if generalise_toplevel then
@@ -26,18 +38,20 @@ let make_constraint ~generalise_toplevel result_var term =
     else constr_trans
   in
 
-  N.Constraint.Exists (result_var, open_result)
+  (result_var, N.Constraint.Exists (result_var, open_result))
 
 let run_test ~generalise_toplevel t =
   let open S.Logging in
   let open Shared.Test_definitions in
-  let result_var = N.Tyvar.fresh_tyvar () in
-
-  let constr = make_constraint ~generalise_toplevel result_var t.term in
+  let obey_value_restriction = t.vres in
+  let result_var, constr =
+    make_constraint ~obey_value_restriction ~generalise_toplevel t.term
+  in
   log_sexp "constraint:\n%s\n" (N.Constraint.sexp_of_t constr);
 
   let constr = N.Constraint.freshen_binders constr in
-  log_sexp "constraint after freshening binders:\n%s\n" (N.Constraint.sexp_of_t constr);
+  log_sexp "constraint after freshening binders:\n%s\n"
+    (N.Constraint.sexp_of_t constr);
 
   let exp_ty_opt = Option.map t.typ ~f:N.Types.nominal_of_debruijn in
 
@@ -52,7 +66,8 @@ let run_test ~generalise_toplevel t =
       log "result type:%s\n" (S.Types.string_of_typ res_ty);
       log "expected type:%s\n" (S.Types.string_of_typ exp_ty);
       OUnit2.assert_bool "Types not equal" (N.Unifier.equal exp_ty res_ty)
-  | Result.Ok _, None -> OUnit2.assert_failure "Solver succeded when it shouldn't!\n"
+  | Result.Ok _, None ->
+      OUnit2.assert_failure "Solver succeded when it shouldn't!\n"
   | Result.Error _, None -> log_message "solver failed, as expected"
   | Result.Error e, Some _ ->
       log_sexp "Solver failed with %s\n" (N.Tc_errors.sexp_of_errors e);

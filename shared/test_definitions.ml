@@ -743,6 +743,9 @@ let fml_inst_2 =
    term : let f : ∀a.((a → a) → Int) = λx.1
           in (λx.f x) id
    type : [∀ a.] Int
+
+  Note: the generalisation of a in the result looks weird.
+  Probably something inferno-specific?
 *)
 let fml_inst_3 =
   { name = "inst_3"
@@ -751,8 +754,15 @@ let fml_inst_3 =
                    , Some (TyForall (1, TyArrow (TyArrow( TyVar 1, TyVar 1), int_t)))
                    , abs "x" one
                    , app (abs "x" (app f x)) id))
-  ; typ  = Some (TyForall ((), int_t))
+  ; typ  = Some int_t
   ; vres = true
+  }
+
+let fml_inst_3_inferno =
+  { name = fml_inst_3.name
+  ; term = fml_inst_3.term
+  ; typ  = Some (TyForall ((), int_t))
+  ; vres = fml_inst_3.vres
   }
 
 (*
@@ -1084,6 +1094,9 @@ let fml_let_annot_9_no_annot =
          in f
    type: None
    bug: #31
+
+   Note: According to the FreezeML well-scopedness rules, this program is ill-scoped!
+   The outer let binding does not generalize/bind a & b, meaning that they are not in scope in the inner one!
 *)
 let fml_let_annot_10 =
   { name = "let_annot_10"
@@ -1195,14 +1208,24 @@ let fml_quantifier_ordering_4 =
 (*
    term : let f = (λx.1) (λy.y) in ~f
    type : ∀ a. Int
+
+  Note: this also looks very wrong!
 *)
+
 let fml_redundant_quantifiers_1 =
   { name = "quantifier_placement_3"
   ; term = let_ ("f",
                     app (abs "x" one) (abs "y" y),
                     frozen "f")
-  ; typ  = Some (TyForall ((), int_t))
+  ; typ  = Some int_t
   ; vres = true
+  }
+
+let fml_redundant_quantifiers_1_inferno =
+  { name = fml_redundant_quantifiers_1.name
+  ; term = fml_redundant_quantifiers_1.term
+  ; typ  = Some (TyForall ((), int_t))
+  ; vres = fml_redundant_quantifiers_1.vres
   }
 
 (*
@@ -1506,6 +1529,8 @@ let fml_mixed_prefix_4 =
          let (y : ∀ a. a → a) = λw. w in
          x (~y)
    type: [∀ a.] Int
+
+  Note: The type that inferno wants looks plain wrong
 *)
 let fml_poly_binding_1 =
   { name = "poly_binding_1"
@@ -1516,8 +1541,15 @@ let fml_poly_binding_1 =
                            , Some (TyForall (1, TyArrow (TyVar 1, TyVar 1)))
                            , abs "w" w
                            , app x (frozen "y")))
-  ; typ  = Some (TyForall ((), int_t))
+  ; typ  = Some int_t
   ; vres = true
+  }
+
+let fml_poly_binding_1_inferno =
+  { name = fml_poly_binding_1.name
+  ; term = fml_poly_binding_1.term
+  ; typ  = Some (TyForall ((), int_t))
+  ; vres = fml_poly_binding_1.vres
   }
 
 (*
@@ -1690,13 +1722,37 @@ let fml_value_restriction_3 =
   ; vres = true
   }
 
+(*
+   term : let (f : ∀ a. int) = 1 in ~f
+   type : ∀ a. int
+*)
+let fml_redundant_quantifier_1 =
+  { name = "fml_redundant_quantifier_1"
+  ; term = ML.Let ("f", Some (TyForall (1, int_t)), one, (frozen "f"))
+  ; typ  = Some (TyForall ((), int_t))
+  ; vres = true
+  }
+
+(*
+   term : let (f : ∀ a b. a -> a) =  λx in ~f
+   type : ∀ a b. a -> a
+*)
+let fml_redundant_quantifier_2 =
+  { name = "fml_redundant_quantifier_2"
+  ; term = ML.Let ("f", Some (TyForall (1, TyForall (2, TyArrow (TyVar 1, TyVar 1)))), abs "x" x, (frozen "f"))
+  ; typ  = Some (TyForall ((), TyForall ((), TyArrow (TyVar 1, TyVar 1))))
+  ; vres = true
+  }
+
+
 let shared_good_tests test = [
+  test env_test;
+
 
   (* PLDI paper examples *)
 
   (* a1 is added as per-implementation test *)
   (* a1_dot is added as per-implementation test *)
-
   test a2;
   test a2_dot;
   test a4;
@@ -1737,7 +1793,7 @@ let shared_good_tests test = [
   test fml_const_false;
   test fml_inst_1;
   test fml_inst_2;
-  test fml_inst_3;
+  (* fml_inst_3 seems inferno-specfic *)
   test fml_inst_sig_1;
   test fml_inst_sig_2;
   test fml_id_app;
@@ -1773,8 +1829,6 @@ let shared_good_tests test = [
   test fml_quantifier_ordering_3;
   test fml_quantifier_ordering_4;
 
-  test fml_redundant_quantifiers_1;
-
   test fml_type_annotations_1;
   test fml_id_appl;
   test fml_choose_choose;
@@ -1796,7 +1850,7 @@ let shared_good_tests test = [
   test fml_mixed_prefix_3;
   test fml_mixed_prefix_4;
 
-  test fml_poly_binding_1;
+  (* fml_poly_binding_1 has an inferno-specific version *)
   test fml_poly_binding_2;
   test fml_poly_binding_3;
   test fml_poly_binding_4;
@@ -1813,6 +1867,8 @@ let shared_good_tests test = [
   test fml_value_restriction_1;
   test fml_value_restriction_2;
 
+  test fml_redundant_quantifier_1;
+  test fml_redundant_quantifier_2;
 ]
 
 let inferno_tests_known_broken handle =
@@ -1822,12 +1878,12 @@ let inferno_tests_known_broken handle =
 ]
 
 let inferno_dedicated_tests test =
-[
-  (* TODO: Consider moving to shared tests? *)
-  test env_test;
-
+[ (* Some of these tests behave very weirdly ... *)
   test a1_inferno_order;
   test a1_dot_inferno_order;
+  test fml_inst_3_inferno;
+  test fml_redundant_quantifiers_1_inferno;
+  test fml_poly_binding_1_inferno
 ]
 
 
@@ -1840,6 +1896,12 @@ let naive_dedicated_tests test =
 [
   test a1_correct_order;
   test a1_dot_correct_order;
+  test fml_inst_3;
+  test fml_redundant_quantifiers_1;
+  test fml_poly_binding_1;
+
+  (* broken in inferno *)
+  test fml_value_restriction_3
 ]
 
 let naive_implementation_tests =

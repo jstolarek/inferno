@@ -12,14 +12,16 @@ end
 include Comparable
 
 (* Fresh tyvar names *)
-let fresh_tyvar =
+let set_initial_tyvar, fresh_tyvar =
+  let counter = ref 0 in
+  let set_start min = counter := min in
   let postincrement r =
     let v = !r in
     r := v + 1;
     v
   in
-  let counter = ref 0 in
-  fun () -> postincrement counter
+  let fresh () = postincrement counter in
+  (set_start, fresh)
 
 module Set = Set.Make (Comparable)
 
