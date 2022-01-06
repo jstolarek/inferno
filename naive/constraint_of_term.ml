@@ -27,11 +27,15 @@ let translate ?(obey_value_restriction = true) term ty =
         let a1t = Types.TyVar a1 in
         Constraint.Exists (a1, for_lambda annot_ty a1t ty x m)
     | Term.Let (x, None, m, n) ->
-        let restriction = if Term.is_gval m then Types.Poly else Types.Mono in
+        let restriction =
+          if Term.is_gval m || not obey_value_restriction then Types.Poly
+          else Types.Mono
+        in
         let a1 = fresh () in
         let a1t = Types.TyVar a1 in
         Constraint.Let (restriction, x, a1, transl m a1t, transl n ty)
-    | Term.Let (x, Some annot_ty, m, n) when Term.is_gval m || not obey_value_restriction ->
+    | Term.Let (x, Some annot_ty, m, n)
+      when Term.is_gval m || not obey_value_restriction ->
         let qs, guarded_ty = Types.split_toplevel_quantifiers annot_ty in
         let conj1 = Constraint.forall (qs, transl m guarded_ty) in
         let conj2 = Constraint.Def (x, annot_ty, transl n ty) in
