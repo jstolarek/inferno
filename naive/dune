@@ -2,7 +2,7 @@
   (name naive)
   (public_name inferno.naive)
   (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
-  (modules solver unifier types constraint state tc_errors term tevar tyvar constraint_of_term)
+  (modules solving unification types constraint state tc_errors term tevar tyvar constraint_of_term)
   (libraries inferno.shared core sexplib)
 )
 

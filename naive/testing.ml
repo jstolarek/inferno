@@ -40,7 +40,7 @@ let make_constraint ~obey_value_restriction ~generalise_toplevel term =
 
   (result_var, N.Constraint.Exists (result_var, open_result))
 
-let run_test ~generalise_toplevel (module Solver : N.Solver.Solver) t =
+let run_test ~generalise_toplevel (module Solver : N.Solving.Solver) t =
   let open S.Logging in
   let open Shared.Test_definitions in
   let obey_value_restriction = t.vres in
@@ -55,7 +55,7 @@ let run_test ~generalise_toplevel (module Solver : N.Solver.Solver) t =
 
   let exp_ty_opt = Option.map t.typ ~f:N.Types.nominal_of_debruijn in
 
-  let initial_state = N.Solver.state_of_constraint constr in
+  let initial_state = N.Solving.state_of_constraint constr in
   log_sexp "initial state:\n%s\n" (N.State.sexp_of_t initial_state);
 
   let result = Solver.solve initial_state in
@@ -82,7 +82,7 @@ let tests_cases =
     let open Shared.Test_definitions in
     let open OUnit2 in
     test_def.name >:: fun ctx ->
-    run_test (module N.Solver.Ordered) ~generalise_toplevel:true test_def
+    run_test (module N.Solving.Ordered) ~generalise_toplevel:true test_def
   in
   List.map ~f:convert test_definitions
 

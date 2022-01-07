@@ -1,6 +1,6 @@
 open Core
 
-module Make (U : Unifier.Unifier) = struct
+module Make (U : Unification.Unifier) = struct
   let handle_constraint state =
     let open Constraint in
     let open State in
@@ -55,7 +55,7 @@ module Make (U : Unifier.Unifier) = struct
         (* let open Unifier in *)
         let theta = state.subst in
         let u_state =
-          Unifier.{ mono_flex_vars = state.flex_mono_vars; subst = state.subst }
+          Unification.{ mono_flex_vars = state.flex_mono_vars; subst = state.subst }
         in
         let rigid_vars = State.rigid_vars state in
         let unifier_res =
@@ -63,7 +63,7 @@ module Make (U : Unifier.Unifier) = struct
             (Types.Subst.apply theta ty1)
             (Types.Subst.apply theta ty2)
         in
-        Result.bind unifier_res ~f:(fun Unifier.{ mono_flex_vars; subst } ->
+        Result.bind unifier_res ~f:(fun Unification.{ mono_flex_vars; subst } ->
             (* See comment in unifier, no neeed to compose (as the paper would) *)
             let state =
               with_unifier_state mono_flex_vars subst state
@@ -204,10 +204,10 @@ type solution = State.unifier_state
 let state_of_constraint = State.empty
 
 module type Solver = sig
-  module Unifier : Unifier.Unifier
+  module Unifier : Unification.Unifier
 
   val solve : State.t -> (solution, Tc_errors.errors) Result.t
 end
 
-module Ordered : Solver = Make (Unifier.Ordered)
-module Unordered : Solver = Make (Unifier.Unordered)
+module Ordered : Solver = Make (Unification.Ordered)
+module Unordered : Solver = Make (Unification.Unordered)
