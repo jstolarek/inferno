@@ -43,6 +43,9 @@ end
 
 type tyvar_set = Tyvar.Set.t [@@deriving sexp]
 
+(* TODO: use this in [t] *)
+type unifier_state = { mono_flex_vars : tyvar_set; subst : Types.Subst.t }
+
 type t = {
   stack : Stack.t;
   flex_mono_vars : tyvar_set;

@@ -178,3 +178,10 @@ let nominal_of_debruijn t =
     | TyConstrApp (constr, args) -> TyConstrApp (constr, List.map ~f:app args)
   in
   nod t []
+
+
+let strip_useless_toplevel_forall ty =
+  let (qs, t') = split_toplevel_quantifiers ty in
+  let ftvs = ftv t' Tyvar.Set.empty in
+  let qs = List.filter ~f:(Set.mem ftvs) qs in
+  forall qs t'
