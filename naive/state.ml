@@ -43,13 +43,12 @@ end
 
 type tyvar_set = Tyvar.Set.t [@@deriving sexp]
 
-(* TODO: use this in [t] *)
 type unifier_state = { mono_flex_vars : tyvar_set; subst : Types.Subst.t }
+[@@deriving sexp]
 
 type t = {
   stack : Stack.t;
-  flex_mono_vars : tyvar_set;
-  subst : Types.Subst.t;
+  unifier_state : unifier_state;
   cnstrnt : Constraint.t;
   (* cached information that can be obtained from earlier fields *)
   mutable rigid_vars : (Tyvar.set option[@sexp.opaque]);
@@ -86,8 +85,8 @@ let tevar_env state =
 let empty cnstrnt =
   {
     stack = [];
-    flex_mono_vars = Tyvar.Set.empty;
-    subst = Types.Subst.empty;
+    unifier_state =
+      { mono_flex_vars = Tyvar.Set.empty; subst = Types.Subst.empty };
     cnstrnt;
     rigid_vars = None;
     tevar_env = None;
@@ -121,10 +120,15 @@ let pop_and_set_constraint state constr =
       invalidate_caches state frame
   | _ -> failwith "illegal argument"
 
-let with_flex_mono_vars state flex_mono_vars = { state with flex_mono_vars }
+let with_flex_mono_vars state mono_flex_vars =
+  let unifier_state = { state.unifier_state with mono_flex_vars } in
+  { state with unifier_state }
 
-let with_unifier_state state flex_mono_vars subst =
-  { state with flex_mono_vars; subst }
+let with_subst state subst =
+  let unifier_state = { state.unifier_state with subst } in
+  { state with unifier_state }
+
+let with_unifier_state state unifier_state = { state with unifier_state }
 
 let with_stack state stack =
   { state with stack; tevar_env = None; rigid_vars = None }

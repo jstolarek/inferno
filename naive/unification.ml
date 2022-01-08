@@ -114,7 +114,10 @@ and unify_forall_ordered rigid_vars mono_flex_vars subst (q1, ty1) other_ty =
 and unify_forall_unordered rigid_vars mono_flex_vars subst (q1, ty1) other_ty =
   failwith "todo"
 
-type unifier_state = { mono_flex_vars : Tyvar.Set.t; subst : Types.Subst.t }
+type unifier_state = State.unifier_state = {
+  mono_flex_vars : Tyvar.Set.t;
+  subst : Types.Subst.t;
+}
 
 let mk_equal ~ordered ty1 ty2 =
   let res =

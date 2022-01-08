@@ -12,13 +12,15 @@ module Make (U : Unification.Unifier) = struct
     in
     let push_extend_unifier_state frame constr new_var =
       let state = push_and_set_constraint state frame constr in
-      let subst = Types.Subst.set state.subst new_var (TyVar new_var) in
-      let state = State.with_unifier_state state state.flex_mono_vars subst in
+      let subst =
+        Types.Subst.set state.unifier_state.subst new_var (TyVar new_var)
+      in
+      let state = State.with_subst state subst in
       Result.Ok state
     in
     let with_constraint = Fn.flip State.with_constraint in
-    let with_unifier_state vars subst state =
-      State.with_unifier_state state vars subst
+    let with_unifier_state mono_flex_vars subst state =
+      State.with_unifier_state state { mono_flex_vars; subst }
     in
     match c with
     (* S-ConjPush*)
@@ -33,15 +35,15 @@ module Make (U : Unification.Unifier) = struct
         let rigid_vars = State.rigid_vars state in
         let free_flexible = Types.ftv ty rigid_vars in
 
-        let ty_substed = Types.Subst.apply state.subst ty in
+        let ty_substed = Types.Subst.apply state.unifier_state.subst ty in
         let free_flexible_substed = Types.ftv ty_substed rigid_vars in
 
         let flex_mono_vars =
-          Set.union state.flex_mono_vars free_flexible_substed
+          Set.union state.unifier_state.mono_flex_vars free_flexible_substed
         in
         let can_demote_all_ftv =
-          Types.Subst.can_demote state.subst rigid_vars flex_mono_vars
-            free_flexible
+          Types.Subst.can_demote state.unifier_state.subst rigid_vars
+            flex_mono_vars free_flexible
         in
         if can_demote_all_ftv then
           let state = State.with_flex_mono_vars state flex_mono_vars in
@@ -53,13 +55,11 @@ module Make (U : Unification.Unifier) = struct
     (* S-Eq *)
     | Constraint.Equiv (ty1, ty2) ->
         (* let open Unifier in *)
-        let theta = state.subst in
-        let u_state =
-          Unification.{ mono_flex_vars = state.flex_mono_vars; subst = state.subst }
-        in
+        let theta = state.unifier_state.subst in
+
         let rigid_vars = State.rigid_vars state in
         let unifier_res =
-          U.unify ~rigid_vars u_state
+          U.unify ~rigid_vars state.unifier_state
             (Types.Subst.apply theta ty1)
             (Types.Subst.apply theta ty2)
         in
@@ -110,8 +110,8 @@ module Make (U : Unification.Unifier) = struct
     let pop_and_set c = Result.Ok (State.pop_and_set_constraint state c) in
     let with_stack = Fn.flip State.with_stack in
     let with_constraint = Fn.flip State.with_constraint in
-    let with_unifier_state vars subst state =
-      State.with_unifier_state state vars subst
+    let with_unifier_state mono_flex_vars subst state =
+      State.with_unifier_state state { mono_flex_vars; subst }
     in
 
     match ([], stack) with
@@ -125,7 +125,8 @@ module Make (U : Unification.Unifier) = struct
           (* TODO: change range_contains to just take "ignore" param, instead of "rigid vars" *)
           List.exists
             ~f:(fun var ->
-              Types.Subst.range_contains state.subst Tyvar.Set.empty var)
+              Types.Subst.range_contains state.unifier_state.subst
+                Tyvar.Set.empty var)
             vars
         in
         if any_escapes then Result.Error Tc_errors.Quantifier_escape
@@ -133,10 +134,12 @@ module Make (U : Unification.Unifier) = struct
     (* S-Let[Poly|Mono]Pop*)
     | _, Exists vars :: Let (restr, tevar, tyvar, c2) :: stack'
     | vars, Let (restr, tevar, tyvar, c2) :: stack' ->
-        let non_referenced, referenced = split (tyvar :: vars) state.subst in
+        let non_referenced, referenced =
+          split (tyvar :: vars) state.unifier_state.subst
+        in
         let non_referenced = Tyvar.Set.of_list non_referenced in
 
-        let c1_ty = Types.Subst.apply state.subst (TyVar tyvar) in
+        let c1_ty = Types.Subst.apply state.unifier_state.subst (TyVar tyvar) in
         let c1_ty_fftv = Types.ftv_ordered c1_ty (State.rigid_vars state) in
         let generalizable =
           List.filter c1_ty_fftv ~f:(Set.mem non_referenced)
@@ -152,8 +155,10 @@ module Make (U : Unification.Unifier) = struct
               (non_referenced, referenced, Types.forall generalizable c1_ty)
         in
 
-        let mono_vars = Set.diff state.flex_mono_vars to_remove in
-        let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
+        let mono_vars = Set.diff state.unifier_state.mono_flex_vars to_remove in
+        let subst =
+          Set.fold ~f:Map.remove ~init:state.unifier_state.subst to_remove
+        in
 
         let stack = State.Stack.merge [ Exists to_quantify_ex ] stack' in
         let state =
@@ -165,11 +170,13 @@ module Make (U : Unification.Unifier) = struct
     | _, Exists _ :: Exists _ :: _ -> failwith "ill-formed stack"
     (* S-ExistsLower *)
     | _, Exists vars :: lower_frame :: stack' ->
-        let to_remove, referenced_vars = split vars state.subst in
+        let to_remove, referenced_vars = split vars state.unifier_state.subst in
         let to_remove = Tyvar.Set.of_list to_remove in
 
-        let mono_vars = Set.diff state.flex_mono_vars to_remove in
-        let subst = Set.fold ~f:Map.remove ~init:state.subst to_remove in
+        let mono_vars = Set.diff state.unifier_state.mono_flex_vars to_remove in
+        let subst =
+          Set.fold ~f:Map.remove ~init:state.unifier_state.subst to_remove
+        in
 
         let stack =
           State.Stack.merge [ lower_frame; Exists referenced_vars ] stack'
@@ -192,8 +199,7 @@ module Make (U : Unification.Unifier) = struct
   let rec solve state =
     if State.is_final state then (
       Shared.Logging.log_sexp "Final state:\n%s\n" (State.sexp_of_t state);
-      Result.Ok
-        State.{ mono_flex_vars = state.flex_mono_vars; subst = state.subst })
+      Result.Ok state.unifier_state)
     else Result.bind (perform_step state) ~f:solve
 
   module Unifier = U
