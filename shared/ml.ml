@@ -1,3 +1,5 @@
+(* This file is in part taken from François Pottier's Inferno implementation *)
+
 open Core
 
 type ty = Types.nominal_type

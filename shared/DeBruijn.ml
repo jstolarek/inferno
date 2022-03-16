@@ -1,3 +1,6 @@
+(* This file is taken from François Pottier's Inferno implementation *)
+
+
 (* This module defines facilities for working with syntax, in nominal and
    de Bruijn representations. *)
 

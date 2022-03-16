@@ -1,4 +1,6 @@
- open Core
+(* This file is in part taken from François Pottier's Inferno implementation *)
+
+open Core
 
 module type Type_constr =
   sig
