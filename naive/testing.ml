@@ -73,7 +73,6 @@ let run_test ~generalise_toplevel (module Solver : N.Solving.Solver) t =
       log_sexp "Solver failed with %s\n" (N.Tc_errors.sexp_of_errors e);
       OUnit2.assert_failure "Solver failed when it shouldn't!\n"
 
-
 let test_cases_ordered, test_cases_unordered_reused =
   let mk_cases (module Solver : N.Solving.Solver) ordered =
     let test_definitions = S.Test_definitions.naive_implementation_tests in
@@ -106,6 +105,8 @@ let unordered_unification_tests =
         forall [ 1; 0 ] (TyArrow (TyVar 0, TyVar 1)) );
       ( forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 1)),
         forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 0)) );
+      ( forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 1)),
+        forall [ 1 ] (TyArrow (S.Types.int_t, TyVar 1)) );
     ]
   in
   let check expect_equal (ty1, ty2) =
