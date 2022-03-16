@@ -1,6 +1,6 @@
 open Core
 
-let verbose = true
+let verbose = false
 
 let log desc data =
   if verbose then
