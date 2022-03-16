@@ -1032,14 +1032,18 @@ let fml_let_annot_7_quantifier_shadowing =
    term: let (f : ∀ a. ∀ b. b → b) = ~id in 1
    type: X
 *)
-let fml_let_annot_8 =
+let fml_let_annot_8 ordered =
   { name = "let_annot_8"
   ; term = (fml_id)
            (ML.Let ( "f"
                    , Some (TyForall(1, TyForall (2, TyArrow (TyVar 2, TyVar 2))))
                    , frozen "id"
                    , one))
-  ; typ  = None
+  ; typ  =
+      if ordered then
+        None
+      else
+        Some int_t
   ; vres = true
   }
 
@@ -1047,14 +1051,18 @@ let fml_let_annot_8 =
    term: let (f : ∀ a. ∀ a. a → a) = ~id in 1
    type: X
 *)
-let fml_let_annot_8_quantifier_shadowing =
+let fml_let_annot_8_quantifier_shadowing ordered =
   { name = "let_annot_8_quantifier_shadowing"
   ; term = (fml_id)
            (ML.Let ( "f"
                    , Some (TyForall(1, TyForall (1, TyArrow (TyVar 1, TyVar 1))))
                    , frozen "id"
                    , one))
-  ; typ  = None
+  ; typ  =
+      if ordered then
+        None
+      else
+        Some int_t
   ; vres = true
   }
 
@@ -1157,7 +1165,7 @@ let fml_quantifier_ordering_1 =
    type : X
    bugs : #3
 *)
-let fml_quantifier_ordering_2 =
+let fml_quantifier_ordering_2 ordered =
   { name = "quantifier_ordering_2"
   ; term = (fml_pairprim)
            (app (ML.Abs ("f", Some (TyForall (1, TyForall (2,
@@ -1165,15 +1173,19 @@ let fml_quantifier_ordering_2 =
                                       TyProduct (TyVar 1, TyVar 2))))))
                             , app (app (var "f") one) true_))
                 (frozen "pair'"))
-  ; typ  = None
+  ; typ  =
+      if ordered then
+        None
+      else
+        Some (TyProduct (int_t, bool_t))
   ; vres = true
   }
 
 (*
-   term : let pair' : ∀ b a. a → b → (a × b) = ~pair in pair'
+   term : let pair' : ∀ b a. a → b → (a × b) = ~pair in ~pair'
    type : X
 *)
-let fml_quantifier_ordering_3 =
+let fml_quantifier_ordering_3 ordered =
   { name = "quantifier_ordering_3"
   ; term = (fml_pair)
            (ML.Let ( "pair'"
@@ -1181,8 +1193,14 @@ let fml_quantifier_ordering_3 =
                                      TyArrow (TyVar 1, TyArrow (TyVar 2,
                                      TyProduct (TyVar 1, TyVar 2))))))
                     , frozen "pair"
-                    , var "pair'"))
-  ; typ  = None
+                    , frozen "pair'"))
+  ; typ  =
+      if ordered then
+        None
+      else
+        Some (TyForall ((), TyForall ((),
+                                     TyArrow (TyVar 0, TyArrow (TyVar 1,
+                                     TyProduct (TyVar 0, TyVar 1))))))
   ; vres = true
   }
 
@@ -1423,7 +1441,7 @@ let fml_alpha_equiv_4 =
          x (~z)
    type: X
 *)
-let fml_alpha_equiv_5 =
+let fml_alpha_equiv_5 ordered =
   { name = "alpha_equiv_5"
   ; term = ML.Let ( "x"
                   , Some (TyArrow (TyForall(1, TyForall (1, TyArrow (TyVar 1, TyVar 1))), int_t))
@@ -1432,7 +1450,11 @@ let fml_alpha_equiv_5 =
                            , Some (TyForall (1, TyForall (2, TyArrow (TyVar 1, TyVar 1))))
                            , abs "w" w
                            , app x (frozen "z")))
-  ; typ  = None
+  ; typ  =
+      if ordered then
+        None
+      else
+        Some int_t
   ; vres = true
   }
 
@@ -1745,7 +1767,7 @@ let fml_redundant_quantifier_2 =
   }
 
 
-let shared_good_tests test = [
+let shared_good_tests test ordered = [
   test env_test;
 
 
@@ -1815,8 +1837,8 @@ let shared_good_tests test = [
   test fml_let_annot_6_quantifier_shadowing;
   test fml_let_annot_7;
   test fml_let_annot_7_quantifier_shadowing;
-  test fml_let_annot_8;
-  test fml_let_annot_8_quantifier_shadowing;
+  test (fml_let_annot_8 ordered);
+  test (fml_let_annot_8_quantifier_shadowing ordered);
   test fml_let_annot_9;
   test fml_let_annot_9_no_annot;
 
@@ -1825,8 +1847,8 @@ let shared_good_tests test = [
   test fml_mono_binder_constraint_2;
 
   test fml_quantifier_ordering_1;
-  test fml_quantifier_ordering_2;
-  test fml_quantifier_ordering_3;
+  test (fml_quantifier_ordering_2 ordered);
+  test (fml_quantifier_ordering_3 ordered);
   test fml_quantifier_ordering_4;
 
   test fml_type_annotations_1;
@@ -1842,7 +1864,7 @@ let shared_good_tests test = [
   test fml_alpha_equiv_2;
   test fml_alpha_equiv_3;
   test fml_alpha_equiv_4;
-  test fml_alpha_equiv_5;
+  test (fml_alpha_equiv_5 ordered);
 
   test fml_mixed_prefix_1;
   test fml_mixed_prefix_2;
@@ -1888,7 +1910,7 @@ let inferno_dedicated_tests test =
 
 
 let inferno_implementation_tests good_test known_broken_test =
-  shared_good_tests good_test @ inferno_dedicated_tests good_test
+  shared_good_tests good_test false @ inferno_dedicated_tests good_test
   @ inferno_tests_known_broken  known_broken_test
 
 
@@ -1904,5 +1926,5 @@ let naive_dedicated_tests test =
   test fml_value_restriction_3
 ]
 
-let naive_implementation_tests =
-  shared_good_tests Fun.id @ naive_dedicated_tests Fun.id
+let naive_implementation_tests ordered =
+  shared_good_tests Fun.id ordered @ naive_dedicated_tests Fun.id

@@ -76,18 +76,61 @@ let run_test ~generalise_toplevel (module Solver : N.Solving.Solver) t =
 (* let main () = run_test ~generalise_toplevel:false S.Test_definitions.a2_dot *)
 (* let _ = main () *)
 
-let tests_cases =
-  let test_definitions = S.Test_definitions.naive_implementation_tests in
-  let convert test_def =
-    let open Shared.Test_definitions in
-    let open OUnit2 in
-    test_def.name >:: fun ctx ->
-    run_test (module N.Solving.Ordered) ~generalise_toplevel:true test_def
+let test_cases_ordered, test_cases_unordered_reused =
+  let mk_cases (module Solver : N.Solving.Solver) ordered =
+    let test_definitions = S.Test_definitions.naive_implementation_tests in
+    let convert test_def =
+      let open Shared.Test_definitions in
+      let open OUnit2 in
+      test_def.name >:: fun ctx ->
+      run_test (module Solver) ~generalise_toplevel:true test_def
+    in
+    List.map ~f:convert (test_definitions ordered)
   in
-  List.map ~f:convert test_definitions
+  ( mk_cases (module N.Solving.Ordered) true,
+    mk_cases (module N.Solving.Unordered) false )
+
+let unordered_unification_tests =
+  let open N.Types in
+  let open OUnit2 in
+  N.Tyvar.set_initial_tyvar 100;
+  let equal =
+    [
+      ( forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 1)),
+        forall [ 1; 0 ] (TyArrow (TyVar 0, TyVar 1)) );
+      ( forall [ 0; 1 ] (TyArrow (TyVar 1, TyVar 1)),
+        forall [ 1 ] (TyArrow (TyVar 1, TyVar 1)) );
+    ]
+  in
+  let not_equal =
+    [
+      ( forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 0)),
+        forall [ 1; 0 ] (TyArrow (TyVar 0, TyVar 1)) );
+      ( forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 1)),
+        forall [ 0; 1 ] (TyArrow (TyVar 0, TyVar 0)) );
+    ]
+  in
+  let check expect_equal (ty1, ty2) =
+    let msg =
+      Printf.sprintf "Types expected%s to be equal"
+        (if expect_equal then "" else " not")
+    in
+    "Type equality test" >:: fun _ctx ->
+    assert_bool msg Bool.(N.Unification.Unordered.equal ty1 ty2 = expect_equal)
+  in
+
+  List.append
+    (List.map equal ~f:(check true))
+    (List.map not_equal ~f:(check false))
 
 let suites =
   let open OUnit2 in
-  "all" >::: [ "test cases" >::: tests_cases ]
+  "all"
+  >::: [
+         "ordered test cases" >::: test_cases_ordered;
+         "unordered type equality tests" >::: unordered_unification_tests;
+         "ordered test cases by unordered solver"
+         >::: test_cases_unordered_reused;
+       ]
 
 let () = OUnit2.run_test_tt_main suites
