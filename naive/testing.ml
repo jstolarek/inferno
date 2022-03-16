@@ -73,8 +73,6 @@ let run_test ~generalise_toplevel (module Solver : N.Solving.Solver) t =
       log_sexp "Solver failed with %s\n" (N.Tc_errors.sexp_of_errors e);
       OUnit2.assert_failure "Solver failed when it shouldn't!\n"
 
-(* let main () = run_test ~generalise_toplevel:false S.Test_definitions.a2_dot *)
-(* let _ = main () *)
 
 let test_cases_ordered, test_cases_unordered_reused =
   let mk_cases (module Solver : N.Solving.Solver) ordered =

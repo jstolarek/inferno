@@ -29,16 +29,6 @@ let rec unify_and_check_equal ~ordered ~dummy_vars rigid_vars mono_flex_vars
       args1 args2
   in
 
-  (* let is_same_var a = function *)
-  (*   | TyVar b -> Tyvar.equal a b *)
-  (*   | Forall _ as other when not ordered -> *)
-  (*     (\* When ordered quantifiers are disabled, a and ∀ b_1, ... b_n. a are *)
-  (*        equivalent (assuming that all b_i <> a)  *\) *)
-  (*     (match Types.freshen_quantifiers other with *)
-  (*     | (_, TyVar b) -> Tyvar.equal a b *)
-  (*     | _ -> false) *)
-  (* in *)
-
   (* Naive, but effective:
      In unordered mode, if tyi is of the form ∀ b_1, ... b_n.t', then we
      remove all b_i that do not appear in t' *)
@@ -134,14 +124,10 @@ and unify_forall_ordered ~dummy_vars rigid_vars mono_flex_vars subst (q1, ty1)
   | _ -> Result.Error Tc_errors.Unification_clash_failure
 
 and unify_forall_unordered ~dummy_vars rigid_vars mono_flex_vars subst ty1 ty2 =
-  Printf.printf "unordered forall unification\n";
-
-  (*  a b. T1  vs c . T2  *)
-
-  (* We unify two types ∀ qs. H and ∀ qs'. H', where H and H' are guarded types.
-     We
-     replace qs and qs' with fresh flexible dummy variables in H and H', resp.
-     We then unify the resulting H and H' and test that the mappi
+  (* We unify two types ∀ qs1. H1 and ∀ qs2. H2, where H1 and H2 are guarded types.
+     We replace qs and qs' with fresh flexible dummy variables in H and H',
+     resp. We then unify the resulting H and H' and test that the resulting
+     substitution on qs1 and qs2 is injective.
   *)
   let qs1, h1 = Types.freshen_quantifiers ty1 in
   let qs2, h2 = Types.freshen_quantifiers ty2 in
@@ -162,7 +148,6 @@ and unify_forall_unordered ~dummy_vars rigid_vars mono_flex_vars subst ty1 ty2 =
   let* result =
     check_escape rigid_vars all_qs (types_equal, mono_vars, subst)
   in
-  Printf.printf "before initial counts, types equal says %b\n" types_equal;
   let initial_counts =
     List.fold all_qs
       ~init:(Map.empty (module Int))
@@ -170,21 +155,15 @@ and unify_forall_unordered ~dummy_vars rigid_vars mono_flex_vars subst ty1 ty2 =
   in
   let check_injective qs =
     let check counts var =
-      Printf.printf "checking variable mapping for %d\n" var;
       match Map.find_exn full_subst var with
       | Types.TyVar v -> (
           match Map.find counts v with
           | Some count ->
-              if count >= 1 then (
-                Printf.printf "%d not injective, count is %d\n" var count;
-                Result.Error Tc_errors.Unification_clash_failure)
+              if count >= 1 then
+                Result.Error Tc_errors.Unification_clash_failure
               else Result.Ok (Map.set counts ~key:v ~data:(count + 1))
-          | None ->
-              Printf.printf "%d not mapped to other quantifier\n" var;
-              Result.Error Tc_errors.Unification_clash_failure)
-      | _ ->
-          Printf.printf "%d not mapped to variable" var;
-          Result.Error Tc_errors.Unification_clash_failure
+          | None -> Result.Error Tc_errors.Unification_clash_failure)
+      | _ -> Result.Error Tc_errors.Unification_clash_failure
     in
     List.fold_result qs ~init:initial_counts ~f:check
   in
