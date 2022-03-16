@@ -29,16 +29,6 @@ let rec unify_and_check_equal ~ordered ~dummy_vars rigid_vars mono_flex_vars
       args1 args2
   in
 
-  (* Naive, but effective:
-     In unordered mode, if tyi is of the form ∀ b_1, ... b_n.t', then we
-     remove all b_i that do not appear in t' *)
-  let ty1, ty2 =
-    if ordered then (ty1, ty2)
-    else
-      ( Types.strip_useless_toplevel_forall ty1,
-        Types.strip_useless_toplevel_forall ty2 )
-  in
-
   match (ty1, ty2) with
   | TyVar a, other_ty | other_ty, TyVar a -> (
       let free_flex () = Types.ftv other_ty rigid_vars in
