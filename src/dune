@@ -1,6 +1,0 @@
-(library
-  (name inferno)
-  (public_name inferno)
-  (libraries pprint inferno.shared)
-  (synopsis "A library for constraint-based Hindley-Milner type inference")
-)

@@ -1,6 +1,0 @@
-(executable
-  (name Main)
-  (public_name client)
-  (package inferno)
-  (libraries unix pprint inferno)
-)
