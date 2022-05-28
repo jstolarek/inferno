@@ -1,15 +1,13 @@
 (library
   (name naive)
-  (public_name inferno.naive)
   (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
   (modules solving unification types constraint state tc_errors term tevar tyvar constraint_of_term)
-  (libraries inferno.shared core sexplib)
+  (libraries shared core sexplib)
 )
 
 (executable
   (name Testing)
-  (public_name inferno.naive.testing)
   (modes native)
   (preprocess (pps ppx_deriving.std ppx_hash ppx_compare ppx_sexp_conv))
-  (libraries inferno.shared inferno.naive core ounit2)
+  (libraries naive shared core ounit2)
   (modules testing))
