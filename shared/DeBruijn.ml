@@ -4,7 +4,6 @@
 (* This module defines facilities for working with syntax, in nominal and
    de Bruijn representations. *)
 
-open Tc_result
 
 type index =
   int

@@ -89,7 +89,7 @@ let rec unify_and_check_equal ~ordered ~dummy_vars rigid_vars mono_flex_vars
   | _ -> Result.Error Tc_errors.Unification_clash_failure
 
 and check_escape rigid_vars to_check
-    ((equal, new_flex_mono_vars, new_subst) as result) =
+    ((_equal, _new_flex_mono_vars, new_subst) as result) =
   let escapes =
     List.exists to_check ~f:(Types.Subst.range_contains new_subst rigid_vars)
   in
@@ -177,7 +177,7 @@ let mk_equal ~ordered ty1 ty2 =
 let mk_unify ~ordered ~rigid_vars:rv u_state ty1 ty2 =
   let empty = Tyvar.Set.empty in
   Result.map
-    ~f:(fun (equal, mono_flex_vars, subst) -> { mono_flex_vars; subst })
+    ~f:(fun (_equal, mono_flex_vars, subst) -> { mono_flex_vars; subst })
     (unify_and_check_equal ~ordered ~dummy_vars:empty rv u_state.mono_flex_vars
        u_state.subst ty1 ty2)
 

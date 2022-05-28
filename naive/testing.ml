@@ -60,7 +60,7 @@ let run_test ~generalise_toplevel (module Solver : N.Solving.Solver) t =
 
   let result = Solver.solve initial_state in
   match (result, exp_ty_opt) with
-  | Result.Ok N.State.{ mono_flex_vars; subst }, Some exp_ty ->
+  | Result.Ok N.State.{ subst; _ }, Some exp_ty ->
       log_message "solver succeeded";
       let res_ty = Map.find_exn subst result_var in
       log "result type:%s\n" (S.Types.string_of_typ res_ty);
@@ -79,7 +79,7 @@ let test_cases_ordered, test_cases_unordered_reused =
     let convert test_def =
       let open Shared.Test_definitions in
       let open OUnit2 in
-      test_def.name >:: fun ctx ->
+      test_def.name >:: fun _ctx ->
       run_test (module Solver) ~generalise_toplevel:true test_def
     in
     List.map ~f:convert (test_definitions ordered)

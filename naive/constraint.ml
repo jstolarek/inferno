@@ -39,7 +39,6 @@ let freshen_binders constr =
       let s', v' = sm s in
       f v' s'
 
-    let run s sm = sm s
     let ( let* ) = bind
   end in
   let rec freshen_type tyvar_map ty =

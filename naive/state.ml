@@ -31,7 +31,7 @@ module Stack = struct
     exception Bad_stack of string
 
     let rec quantifiers_compacted = function
-      | f :: (f' :: fs as tail) ->
+      | f :: (f' :: _fs as tail) ->
           if is_existential_frame f && is_existential_frame f' then
             raise (Bad_stack "neighboring existential frames in stack!")
           else if is_forall_frame f && is_forall_frame f' then
@@ -76,7 +76,7 @@ let tevar_env state =
       let rec collect = function
         | [] -> Tevar.Env.empty
         | Stack.Def (x, ty) :: stack' -> Tevar.Env.set (collect stack') x ty
-        | f :: stack' -> collect stack'
+        | _f :: stack' -> collect stack'
       in
       let env = collect state.stack in
       state.tevar_env <- Some env;

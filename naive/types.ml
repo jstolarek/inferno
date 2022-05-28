@@ -23,13 +23,13 @@ class ['a] fold_visitor =
       | TyMu (v, t') -> o#visit_mu acc v t'
       | TyConstrApp (constr, args) -> o#visit_constr_app acc constr args
 
-    method visit_var acc v = acc
+    method visit_var acc _v = acc
     method visit_product acc t1 t2 = o#visit (o#visit acc t1) t2
     method visit_arrow acc t1 t2 = o#visit (o#visit acc t1) t2
-    method visit_forall acc v t' = o#visit acc t'
-    method visit_mu acc v t' = o#visit acc t'
+    method visit_forall acc _v t' = o#visit acc t'
+    method visit_mu acc _v t' = o#visit acc t'
 
-    method visit_constr_app acc constr args =
+    method visit_constr_app acc _constr args =
       List.fold_left ~f:o#visit ~init:acc args
   end
 
@@ -74,7 +74,7 @@ let ftv_ordered ty to_ignore =
   collect_ftvs ty to_ignore |> dedup
 
 (* TODO: rename this to free_type_variables *)
-let rec ftv ty to_ignore = Tyvar.Set.of_list (ftv_ordered ty to_ignore)
+let ftv ty to_ignore = Tyvar.Set.of_list (ftv_ordered ty to_ignore)
 
 let is_monomorphic ty rigid_vars flex_mono_vars =
   let rec is_mono ty all_mono_vars =
@@ -82,7 +82,7 @@ let is_monomorphic ty rigid_vars flex_mono_vars =
     | TyVar v -> Set.mem all_mono_vars v
     | TyArrow (t1, t2) | TyProduct (t1, t2) ->
         is_mono t1 all_mono_vars && is_mono t2 all_mono_vars
-    | TyForall (v, t') -> false
+    | TyForall _ -> false
     | TyMu (v, t') ->
         let mono_vars = Set.add all_mono_vars v in
         is_mono t' mono_vars
@@ -104,7 +104,7 @@ module Subst = struct
   let set subst var ty = Map.set subst ~key:var ~data:ty
 
   let can_demote (subst : t) rigid_vars flex_mono_vars vars_to_check =
-    let rec cd var = is_monomorphic (get subst var) rigid_vars flex_mono_vars in
+    let cd var = is_monomorphic (get subst var) rigid_vars flex_mono_vars in
     Set.for_all vars_to_check ~f:cd
 
   (* This is not capture avoiding, but relies on the user to ensure this *)
