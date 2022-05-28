@@ -190,19 +190,8 @@ let env_test =
   }
 
 (* PLDI paper examples (Figure 2).  Some examples are marked as MISSING.  This
-   is because they use features not implemented in inferno.  Typically this
+   is because they use features not implemented. Typically this
    means lists. *)
-
-(* Note: inferno does not permit unbound type variables in the resulting System
-   F term.  Therefore in the inferred types all free type variables are bound at
-   the program's top level.  In the examples below type variables bound at
-   program top level are placed in braces to explicitly mark they are not per se
-   part of the type inferred for the term.  Concretely, if the inferred type is:
-
-     [∀ b. ∀ a.] a → b → b
-
-   it means that the inferred type is `a → b → b` and the quantifiers `∀ b. ∀
-   a.` are added at the program top level.  *)
 
 (* Section A: Polymorphic instantiation *)
 
@@ -744,8 +733,6 @@ let fml_inst_2 =
           in (λx.f x) id
    type : [∀ a.] Int
 
-  Note: the generalisation of a in the result looks weird.
-  Probably something inferno-specific?
 *)
 let fml_inst_3 =
   { name = "inst_3"
@@ -1227,7 +1214,6 @@ let fml_quantifier_ordering_4 =
    term : let f = (λx.1) (λy.y) in ~f
    type : ∀ a. Int
 
-  Note: this also looks very wrong!
 *)
 
 let fml_redundant_quantifiers_1 =
@@ -1552,7 +1538,6 @@ let fml_mixed_prefix_4 =
          x (~y)
    type: [∀ a.] Int
 
-  Note: The type that inferno wants looks plain wrong
 *)
 let fml_poly_binding_1 =
   { name = "poly_binding_1"
@@ -1893,27 +1878,6 @@ let shared_good_tests test ordered = [
   test fml_redundant_quantifier_2;
 ]
 
-let inferno_tests_known_broken handle =
-  [
-  handle fml_let_annot_10;
-  handle fml_value_restriction_3
-]
-
-let inferno_dedicated_tests test =
-[ (* Some of these tests behave very weirdly ... *)
-  test a1_inferno_order;
-  test a1_dot_inferno_order;
-  test fml_inst_3_inferno;
-  test fml_redundant_quantifiers_1_inferno;
-  test fml_poly_binding_1_inferno
-]
-
-
-let inferno_implementation_tests good_test known_broken_test =
-  shared_good_tests good_test false @ inferno_dedicated_tests good_test
-  @ inferno_tests_known_broken  known_broken_test
-
-
 let naive_dedicated_tests test =
 [
   test a1_correct_order;
@@ -1922,7 +1886,7 @@ let naive_dedicated_tests test =
   test fml_redundant_quantifiers_1;
   test fml_poly_binding_1;
 
-  (* broken in inferno *)
+  (* broken in inferno version *)
   test fml_value_restriction_3
 ]
 
